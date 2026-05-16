@@ -1045,6 +1045,13 @@ export function WordWorldRPG({ name, setStudents, onExit }) {
 
     return(
       <div style={{minHeight:"100vh",background:T.bg,padding:14}}>
+        {/* 상단 헤더 - 종료 버튼 */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
+          <span style={{fontSize:11,fontWeight:700,color:T.textMid}}>World {selectedWorld.id}</span>
+          <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+        </div>
+
         {/* 상태바 */}
         <div style={{background:`linear-gradient(135deg,${selectedWorld.color},${T.purple})`,borderRadius:14,padding:"12px 14px",marginBottom:12,color:"white"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1070,9 +1077,32 @@ export function WordWorldRPG({ name, setStudents, onExit }) {
 
         {/* 문제 카드 */}
         <Card style={{marginBottom:12,textAlign:"center",padding:"18px 14px",background:selectedWorld.bg}}>
-          <div style={{fontSize:11,fontWeight:800,color:selectedWorld.color,marginBottom:6}}>이 단어의 뜻은?</div>
-          <div style={{fontSize:32,fontWeight:900,color:T.text}}>{q.en}</div>
+          <div style={{fontSize:11,fontWeight:800,color:selectedWorld.color,marginBottom:6}}>이 단어의 뜻은? <span style={{color:T.accent,fontWeight:800}}>(단어 탭하면 발음!)</span></div>
+          <div
+            onClick={()=>speak(q.en)}
+            style={{fontSize:32,fontWeight:900,color:T.text,cursor:"pointer",userSelect:"none",transition:"transform 0.1s",display:"inline-block"}}
+            onMouseDown={e=>e.currentTarget.style.transform="scale(0.94)"}
+            onMouseUp={e=>e.currentTarget.style.transform="scale(1)"}
+            onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
+            onTouchStart={e=>e.currentTarget.style.transform="scale(0.94)"}
+            onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}
+            title="탭하면 발음을 들을 수 있어요"
+          >{q.en}</div>
           <div style={{fontSize:11,color:T.textMid,marginTop:4}}>{q.cat}</div>
+          <button
+            onClick={(e)=>{e.stopPropagation();speak(q.en);}}
+            style={{
+              marginTop:10,
+              background:"rgba(255,255,255,0.9)",
+              border:`2px solid ${selectedWorld.color}`,
+              borderRadius:10,
+              padding:"5px 14px",
+              fontSize:12,
+              fontWeight:800,
+              cursor:"pointer",
+              color:selectedWorld.color,
+            }}
+          >🔊 발음 듣기</button>
         </Card>
 
         {/* 아이템 */}
