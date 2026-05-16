@@ -1200,9 +1200,9 @@ function ExamPrintView({ exam, onBack }) {
 
 const TEACHER_NAV = [
   { id: "dashboard", icon: "📊", label: "대시보드" },
-  { id: "students", icon: "👥", label: "학생 통계" },
-  { id: "bank", icon: "📚", label: "문제 은행" },
-  { id: "exam-builder", icon: "✏️", label: "출제" },
+  { id: "assign", icon: "📬", label: "과제배정" },
+  { id: "students", icon: "👥", label: "학생통계" },
+  { id: "bank", icon: "📚", label: "문제은행" },
   { id: "exams", icon: "📝", label: "시험지" },
   { id: "settings", icon: "⚙️", label: "설정" },
 ];
@@ -1296,9 +1296,487 @@ function TeacherSettings({ savedPw, setSavedPw }) {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+//   과제 배정 시스템 (선생님용)
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── AI 코칭 분석 함수 ─────────────────────────────────────────────────────
+function analyzeStudent(student, assignments, bank) {
+  const records = student?.records || [];
+  if (records.length === 0) return null;
+
+  // 과제별 결과 분석
+  const assignResults = {};
+  records.filter(r => r.type === "assignment" && r.assignmentId).forEach(r => {
+    if (!assignResults[r.assignmentId]) {
+      assignResults[r.assignmentId] = { scores: [], title: r.setTitle, bankId: r.bankId };
+    }
+    assignResults[r.assignmentId].scores.push(
+      r.total > 0 ? Math.round(r.score / r.total * 100) : 0
+    );
+  });
+
+  // 전체 정답률 트렌드
+  const recentAssign = records.filter(r => r.type === "assignment").slice(-10);
+  const accuracies = recentAssign.map(r => r.total > 0 ? Math.round(r.score / r.total * 100) : 0);
+  const avgAcc = accuracies.length > 0
+    ? Math.round(accuracies.reduce((a, b) => a + b, 0) / accuracies.length) : 0;
+
+  // 틀린 문제 패턴 (bankId별)
+  const weakBanks = {};
+  records.filter(r => r.type === "assignment" && r.bankId).forEach(r => {
+    if (!weakBanks[r.bankId]) weakBanks[r.bankId] = { correct: 0, total: 0, title: r.setTitle };
+    weakBanks[r.bankId].correct += r.score || 0;
+    weakBanks[r.bankId].total += r.total || 0;
+  });
+
+  const weakList = Object.values(weakBanks)
+    .filter(b => b.total > 0)
+    .map(b => ({ ...b, rate: Math.round(b.correct / b.total * 100) }))
+    .sort((a, b) => a.rate - b.rate);
+
+  // 연속 학습일
+  const dates = [...new Set(records.map(r => r.date?.slice(0, 10)))].filter(Boolean).sort().reverse();
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < dates.length; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (dates[i] === d.toISOString().slice(0, 10)) streak++;
+    else break;
+  }
+
+  // 추세 (최근 5회 평균 vs 이전 5회 평균)
+  const recent5 = accuracies.slice(-5);
+  const prev5 = accuracies.slice(-10, -5);
+  const recentAvg = recent5.length > 0 ? recent5.reduce((a, b) => a + b, 0) / recent5.length : 0;
+  const prevAvg = prev5.length > 0 ? prev5.reduce((a, b) => a + b, 0) / prev5.length : 0;
+  const trend = recentAvg > prevAvg + 5 ? "up" : recentAvg < prevAvg - 5 ? "down" : "stable";
+
+  return { avgAcc, weakList, streak, trend, recentAvg: Math.round(recentAvg), prevAvg: Math.round(prevAvg), totalAttempts: records.length };
+}
+
+// ── 코칭 화면 ─────────────────────────────────────────────────────────────
+function CoachingView({ student, assignments, bank, setAssignments, onBack }) {
+  const [assignTab, setAssignTab] = useState("result"); // result | assign | history
+  const [selectedBanks, setSelectedBanks] = useState([]);
+  const [dueDate, setDueDate] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const analysis = analyzeStudent(student, assignments, bank);
+  const myAssignments = assignments.filter(a => a.studentName === student.name);
+
+  const toggleBank = (id) => setSelectedBanks(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  );
+
+  const doAssign = () => {
+    if (selectedBanks.length === 0) return;
+    setAssigning(true);
+    const newAssigns = selectedBanks.map(bankId => ({
+      id: uid(),
+      studentName: student.name,
+      bankId,
+      bankTitle: bank[bankId]?.title || bankId,
+      assignedAt: new Date().toISOString(),
+      dueDate: dueDate || null,
+      status: "pending"
+    }));
+    setAssignments(prev => [...prev, ...newAssigns]);
+    setTimeout(() => { setAssigning(false); setDone(true); setSelectedBanks([]); setDueDate(""); }, 400);
+    setTimeout(() => setDone(false), 2500);
+  };
+
+  const removeAssign = (id) => {
+    if (!confirm("이 과제를 삭제할까요?")) return;
+    setAssignments(prev => prev.filter(a => a.id !== id));
+  };
+
+  const lvl = LEVEL_INFO[computeStudentStats(student).level];
+
+  return (
+    <div>
+      {/* 학생 헤더 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <Btn v="ghost" size="sm" onClick={onBack}>← 뒤로</Btn>
+        <div style={{
+          width: 44, height: 44, borderRadius: 12, background: lvl.bg,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26
+        }}>{student.avatar || "🧑"}</div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: T.text }}>{student.name}</div>
+          <div style={{ fontSize: 11, color: T.textMid }}>{student.grade || ""} · {lvl.icon} {lvl.label} · ⭐{student.points || 0}p</div>
+        </div>
+      </div>
+
+      {/* 탭 */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, background: T.card, padding: 5, borderRadius: 12, boxShadow: T.shadow }}>
+        {[
+          { id: "result", label: "📊 결과 분석" },
+          { id: "assign", label: "📬 과제 배정" },
+          { id: "history", label: "📋 배정 내역" },
+        ].map(t => (
+          <button key={t.id} onClick={() => setAssignTab(t.id)} style={{
+            flex: 1, padding: "9px 6px", borderRadius: 8, border: "none", cursor: "pointer",
+            fontSize: 12, fontWeight: 800,
+            background: assignTab === t.id ? T.accent : "transparent",
+            color: assignTab === t.id ? "white" : T.textMid
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* ── 결과 분석 탭 ── */}
+      {assignTab === "result" && (
+        <div>
+          {!analysis ? (
+            <Card style={{ padding: 40, textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>아직 풀이 기록이 없어요</div>
+              <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>과제를 배정하고 학생이 풀면 분석이 시작됩니다</div>
+            </Card>
+          ) : (
+            <>
+              {/* 핵심 수치 */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 14 }}>
+                <Card style={{ padding: 12, textAlign: "center", background: T.accentLight }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: T.accent }}>{analysis.avgAcc}%</div>
+                  <div style={{ fontSize: 10, color: T.textMid, fontWeight: 700 }}>평균 정답률</div>
+                </Card>
+                <Card style={{ padding: 12, textAlign: "center", background: T.greenLight }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: T.green }}>🔥{analysis.streak}</div>
+                  <div style={{ fontSize: 10, color: T.textMid, fontWeight: 700 }}>연속 학습일</div>
+                </Card>
+                <Card style={{ padding: 12, textAlign: "center", background: T.yellowLight }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: T.yellow }}>{analysis.totalAttempts}</div>
+                  <div style={{ fontSize: 10, color: T.textMid, fontWeight: 700 }}>총 풀이 횟수</div>
+                </Card>
+              </div>
+
+              {/* 추세 */}
+              <Card style={{ marginBottom: 14, padding: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>📈 학습 추세</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    flex: 1, padding: "12px 14px", borderRadius: 12,
+                    background: analysis.trend === "up" ? T.greenLight : analysis.trend === "down" ? T.redLight : T.yellowLight,
+                    display: "flex", alignItems: "center", gap: 10
+                  }}>
+                    <div style={{ fontSize: 28 }}>
+                      {analysis.trend === "up" ? "📈" : analysis.trend === "down" ? "📉" : "➡️"}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: T.text }}>
+                        {analysis.trend === "up" ? "향상 중 🎉" : analysis.trend === "down" ? "하락 중 ⚠️" : "유지 중"}
+                      </div>
+                      <div style={{ fontSize: 11, color: T.textMid }}>
+                        이전 {analysis.prevAvg}% → 최근 {analysis.recentAvg}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* 약점 분석 */}
+              {analysis.weakList.length > 0 && (
+                <Card style={{ marginBottom: 14, padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 10 }}>🎯 문제집별 정답률</div>
+                  {analysis.weakList.map((b, i) => (
+                    <div key={i} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{b.title}</span>
+                        <span style={{ fontSize: 12, fontWeight: 900, color: b.rate >= 80 ? T.green : b.rate >= 60 ? T.yellow : T.red }}>
+                          {b.rate}%
+                        </span>
+                      </div>
+                      <div style={{ height: 7, background: T.border, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{
+                          height: "100%", width: `${b.rate}%`,
+                          background: b.rate >= 80 ? T.green : b.rate >= 60 ? T.yellow : T.red,
+                          borderRadius: 4, transition: "width 0.5s"
+                        }} />
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              )}
+
+              {/* 🤖 AI 코칭 멘트 */}
+              <Card style={{ background: `linear-gradient(135deg, ${T.accent}15, ${T.purple}15)`, border: `1.5px solid ${T.accent}33`, padding: 16 }}>
+                <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                  <div style={{ fontSize: 26 }}>🤖</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: T.text }}>Angela AI 코칭</div>
+                    <div style={{ fontSize: 10, color: T.textMid }}>학습 데이터 기반 분석</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: T.text, lineHeight: 1.8 }}>
+                  {/* 종합 평가 */}
+                  <div style={{ marginBottom: 8 }}>
+                    {analysis.avgAcc >= 85
+                      ? `✅ ${student.name} 학생은 전반적으로 매우 우수한 실력을 보이고 있어요! 현재 ${analysis.avgAcc}%의 높은 정답률을 유지하고 있습니다.`
+                      : analysis.avgAcc >= 65
+                      ? `📚 ${student.name} 학생은 기본기가 잡혀 있어요. 정답률 ${analysis.avgAcc}%로 조금 더 연습하면 크게 향상될 수 있어요!`
+                      : `💪 ${student.name} 학생은 현재 기초를 다지는 단계예요. 정답률 ${analysis.avgAcc}%로 차근차근 반복 학습이 필요합니다.`
+                    }
+                  </div>
+                  {/* 추세 코멘트 */}
+                  <div style={{ marginBottom: 8 }}>
+                    {analysis.trend === "up"
+                      ? `📈 최근 ${analysis.recentAvg}%로 이전(${analysis.prevAvg}%)보다 뚜렷하게 향상되고 있어요. 현재 학습 방법을 유지하세요!`
+                      : analysis.trend === "down"
+                      ? `⚠️ 최근 ${analysis.recentAvg}%로 이전(${analysis.prevAvg}%)보다 다소 낮아졌어요. 개념을 다시 점검하고 더 쉬운 문제부터 다시 시작해 보세요.`
+                      : `➡️ 성적이 안정적으로 유지되고 있어요. 새로운 유형에 도전해보면 더 성장할 수 있습니다!`
+                    }
+                  </div>
+                  {/* 약점 기반 추천 */}
+                  {analysis.weakList.length > 0 && analysis.weakList[0].rate < 70 && (
+                    <div style={{ marginBottom: 8 }}>
+                      {`🎯 "${analysis.weakList[0].title}" 문제집 정답률이 ${analysis.weakList[0].rate}%로 가장 낮아요. 이 부분을 집중적으로 복습시키는 것을 추천드려요.`}
+                    </div>
+                  )}
+                  {/* 연속학습 코멘트 */}
+                  <div style={{ marginBottom: 8 }}>
+                    {analysis.streak >= 7
+                      ? `🔥 ${analysis.streak}일 연속 학습 중! 정말 대단한 꾸준함이에요. 학습 습관이 훌륭합니다.`
+                      : analysis.streak >= 3
+                      ? `🌱 ${analysis.streak}일 연속 학습하고 있어요. 꾸준한 학습 습관이 형성되고 있답니다!`
+                      : `📅 연속 학습일이 짧아요. 매일 조금씩이라도 접속하는 습관을 길러주세요.`
+                    }
+                  </div>
+                  {/* 다음 단계 추천 */}
+                  <div style={{ padding: "10px 12px", background: "white", borderRadius: 10, marginTop: 6, fontSize: 12 }}>
+                    <strong>📌 추천 액션:</strong>
+                    {analysis.avgAcc >= 85
+                      ? " 현재 수준보다 한 단계 높은 문제집을 배정해 보세요."
+                      : analysis.weakList.length > 0 && analysis.weakList[0].rate < 60
+                      ? ` "${analysis.weakList[0].title}" 문제집을 다시 배정해서 반복 학습을 시키세요.`
+                      : " 다양한 유형의 문제를 골고루 풀 수 있도록 여러 문제집을 배정해 보세요."
+                    }
+                  </div>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── 과제 배정 탭 ── */}
+      {assignTab === "assign" && (
+        <div>
+          <Card style={{ marginBottom: 14, padding: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 12 }}>📬 {student.name} 학생에게 과제 배정</div>
+            <div style={{ fontSize: 11, color: T.textMid, marginBottom: 12 }}>배정할 문제집을 선택하세요 (복수 선택 가능)</div>
+
+            {Object.values(bank).map(s => {
+              const isSel = selectedBanks.includes(s.id);
+              const alreadyAssigned = myAssignments.some(a => a.bankId === s.id && a.status !== "completed");
+              return (
+                <div key={s.id} onClick={() => !alreadyAssigned && toggleBank(s.id)} style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", marginBottom: 8,
+                  background: isSel ? T.accentLight : alreadyAssigned ? T.bg : T.card,
+                  border: isSel ? `2px solid ${T.accent}` : `2px solid ${T.border}`,
+                  borderRadius: 12, cursor: alreadyAssigned ? "not-allowed" : "pointer",
+                  opacity: alreadyAssigned ? 0.6 : 1
+                }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: 8, flexShrink: 0,
+                    background: isSel ? T.accent : T.border,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "white", fontSize: 14, fontWeight: 900
+                  }}>{isSel ? "✓" : ""}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{s.title}</div>
+                    <div style={{ fontSize: 11, color: T.textMid }}>{s.grade} · {s.tag} · {s.questions.length}문항</div>
+                  </div>
+                  {alreadyAssigned && <Tag color="yellow">배정됨</Tag>}
+                </div>
+              );
+            })}
+
+            <div style={{ marginTop: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.text, marginBottom: 6 }}>📅 마감일 (선택)</div>
+              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{
+                padding: "9px 12px", borderRadius: 10, border: `1.5px solid ${T.border}`,
+                fontSize: 13, width: "100%", boxSizing: "border-box"
+              }} />
+            </div>
+
+            {done && (
+              <div style={{ textAlign: "center", padding: 12, background: T.greenLight, borderRadius: 12, marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: T.green }}>✅ 과제가 배정되었어요!</span>
+              </div>
+            )}
+
+            <Btn v="primary" size="lg" onClick={doAssign} disabled={selectedBanks.length === 0 || assigning}
+              style={{ width: "100%" }}>
+              {assigning ? "배정 중..." : `📬 과제 배정하기 (${selectedBanks.length}개 선택)`}
+            </Btn>
+          </Card>
+        </div>
+      )}
+
+      {/* ── 배정 내역 탭 ── */}
+      {assignTab === "history" && (
+        <div>
+          {myAssignments.length === 0 ? (
+            <Card style={{ padding: 40, textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>배정된 과제가 없어요</div>
+              <div style={{ fontSize: 11, color: T.textMid, marginTop: 4 }}>과제 배정 탭에서 문제를 배정해 주세요</div>
+            </Card>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[...myAssignments].reverse().map(a => {
+                // 이 과제의 결과 기록 찾기
+                const results = (student.records || []).filter(r => r.assignmentId === a.id);
+                const lastResult = results.slice(-1)[0];
+                const avgScore = results.length > 0
+                  ? Math.round(results.reduce((s, r) => s + (r.total > 0 ? r.score / r.total * 100 : 0), 0) / results.length) : null;
+                const isOverdue = a.dueDate && new Date(a.dueDate) < new Date() && !lastResult;
+
+                return (
+                  <Card key={a.id} style={{ padding: 14 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 4 }}>{a.bankTitle}</div>
+                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                          <Tag color="blue">배정일 {a.assignedAt?.slice(0, 10)}</Tag>
+                          {a.dueDate && <Tag color={isOverdue ? "red" : "yellow"}>마감 {a.dueDate}</Tag>}
+                          {avgScore !== null
+                            ? <Tag color={avgScore >= 80 ? "green" : avgScore >= 60 ? "yellow" : "red"}>
+                                정답률 {avgScore}%
+                              </Tag>
+                            : <Tag color="orange">미완료</Tag>
+                          }
+                          {results.length > 1 && <Tag color="purple">{results.length}회 풀이</Tag>}
+                        </div>
+                      </div>
+                      <button onClick={() => removeAssign(a.id)} style={{
+                        width: 26, height: 26, borderRadius: 8, border: "none",
+                        background: T.redLight, color: T.red, fontSize: 12,
+                        cursor: "pointer", fontWeight: 900, flexShrink: 0, marginLeft: 8
+                      }}>✕</button>
+                    </div>
+
+                    {lastResult && (
+                      <div style={{ background: T.bg, borderRadius: 10, padding: "8px 10px", fontSize: 11, color: T.textMid }}>
+                        마지막 풀이: {lastResult.date?.slice(0, 10)} ·
+                        <strong style={{ color: avgScore >= 80 ? T.green : avgScore >= 60 ? T.yellow : T.red }}>
+                          {" "}{lastResult.score}/{lastResult.total} 문항 정답
+                        </strong>
+                      </div>
+                    )}
+                    {isOverdue && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: T.red, fontWeight: 700 }}>
+                        ⚠️ 마감일이 지났어요
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 과제 배정 메인 화면 (학생 목록 → 학생 선택 → 코칭뷰) ─────────────────
+function AssignmentManager({ students, bank, assignments, setAssignments }) {
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+
+  if (selected) {
+    return <CoachingView
+      student={selected}
+      assignments={assignments}
+      bank={bank}
+      setAssignments={setAssignments}
+      onBack={() => setSelected(null)}
+    />;
+  }
+
+  const studentList = Object.values(students || {});
+  const filtered = search
+    ? studentList.filter(s => s.name.includes(search))
+    : studentList;
+
+  const getPendingCount = (name) =>
+    assignments.filter(a => a.studentName === name && a.status !== "completed").length;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 16, fontWeight: 900, color: T.text, marginBottom: 4 }}>📬 과제 배정 & 코칭</div>
+        <div style={{ fontSize: 12, color: T.textMid }}>학생을 선택해서 과제를 배정하고 결과를 분석하세요</div>
+      </div>
+
+      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 학생 이름 검색" style={{
+        width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 12,
+        border: `1.5px solid ${T.border}`, fontSize: 13, marginBottom: 14, outline: "none"
+      }} />
+
+      {studentList.length === 0 ? (
+        <Card style={{ padding: 40, textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>👥</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>아직 학생이 없어요</div>
+          <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>학생이 학생 모드로 로그인하면 자동으로 등록됩니다</div>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card style={{ padding: 28, textAlign: "center" }}>
+          <div style={{ fontSize: 12, color: T.textDim }}>검색 결과가 없어요</div>
+        </Card>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtered.map(s => {
+            const stats = computeStudentStats(s);
+            const lvl = LEVEL_INFO[stats.level];
+            const pendingCnt = getPendingCount(s.name);
+            const analysis = analyzeStudent(s, assignments, bank);
+
+            return (
+              <Card key={s.name} onClick={() => setSelected(s)} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 13, background: lvl.bg, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26
+                }}>{s.avatar || "🧑"}</div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14, fontWeight: 900, color: T.text }}>{s.name}</span>
+                    <Tag color={stats.level === "A" ? "green" : stats.level === "B" ? "blue" : "orange"}>
+                      {lvl.icon} {lvl.label}
+                    </Tag>
+                    {pendingCnt > 0 && <Tag color="pink">과제 {pendingCnt}개</Tag>}
+                    {stats.lastActive === "오늘" && <Tag color="green">● 오늘 활동</Tag>}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.textMid }}>
+                    정답률 {stats.accuracy}% · ⭐{s.points || 0}p
+                    {analysis && (
+                      <span style={{ marginLeft: 6 }}>
+                        {analysis.trend === "up" ? "📈 향상중" : analysis.trend === "down" ? "📉 하락중" : ""}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 22, color: T.textDim }}>›</div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, savedPw, setSavedPw }) {
   const [screen, setScreen] = useState("dashboard");
   const [viewExamId, setViewExamId] = useState(null);
+  const [assignments, setAssignments] = useStorage("angela_assignments", []);
 
   const onNav = (s, id) => {
     setScreen(s);
@@ -1323,6 +1801,7 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, savedP
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "16px 12px" }}>
         {screen === "dashboard" && <TeacherHome bank={bank} exams={exams} students={students} onNav={onNav} />}
+        {screen === "assign" && <AssignmentManager students={students} bank={bank} assignments={assignments} setAssignments={setAssignments} />}
         {screen === "students" && <StatsDashboard students={students} />}
         {screen === "bank" && <QuestionBank bank={bank} setBank={setBank} />}
         {screen === "exam-builder" && <ExamBuilder bank={bank} setExams={setExams} onNav={onNav} />}
@@ -1777,20 +2256,66 @@ function StudentHome({ name, bank, setStudents, students, onLogout }) {
       </div>
 
       <div style={{ padding: "16px 12px", maxWidth: 480, margin: "0 auto" }}>
-        {/* 과제 영역 */}
-        <div style={{ fontSize: 12, fontWeight: 800, color: T.textMid, marginBottom: 8, letterSpacing: 0.5 }}>📚 풀 수 있는 문제</div>
-        <div style={{ marginBottom: 18 }}>
-          {Object.values(bank).map(s => (
-            <Card key={s.id} onClick={() => { setQuizSet(s); setScreen("quiz"); }} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 42, height: 42, background: T.pinkLight, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>📝</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{s.title}</div>
-                <div style={{ fontSize: 11, color: T.textMid }}>{s.grade} · {s.questions.length}문항</div>
-              </div>
-              <div style={{ fontSize: 18, color: T.textDim }}>›</div>
-            </Card>
-          ))}
-        </div>
+        {/* 배정된 과제 */}
+        {(() => {
+          const myAssigns = (typeof window !== "undefined"
+            ? JSON.parse(window.localStorage.getItem("angela_assignments") || "[]")
+            : []).filter(a => a.studentName === name);
+          const assignedBankIds = myAssigns.map(a => a.bankId);
+          const assignedSets = assignedBankIds.map(id => bank[id]).filter(Boolean);
+          const otherSets = Object.values(bank).filter(s => !assignedBankIds.includes(s.id));
+
+          return (
+            <>
+              {assignedSets.length > 0 && (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: T.red, marginBottom: 8, letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 6 }}>
+                    📬 선생님이 배정한 과제
+                    <span style={{ background: T.red, color: "white", fontSize: 10, fontWeight: 900, borderRadius: 8, padding: "2px 7px" }}>{assignedSets.length}</span>
+                  </div>
+                  <div style={{ marginBottom: 18 }}>
+                    {assignedSets.map(s => {
+                      const assign = myAssigns.find(a => a.bankId === s.id);
+                      const isOverdue = assign?.dueDate && new Date(assign.dueDate) < new Date();
+                      return (
+                        <Card key={s.id} onClick={() => { setQuizSet({ ...s, assignmentId: assign?.id }); setScreen("quiz"); }}
+                          style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12, border: `2px solid ${T.red}33`, background: T.redLight }}>
+                          <div style={{ width: 42, height: 42, background: T.red, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>📬</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{s.title}</div>
+                            <div style={{ fontSize: 11, color: T.textMid }}>
+                              {s.grade} · {s.questions.length}문항
+                              {assign?.dueDate && <span style={{ color: isOverdue ? T.red : T.yellow, marginLeft: 6 }}>마감 {assign.dueDate}</span>}
+                            </div>
+                          </div>
+                          <Btn v="primary" size="sm" onClick={e => { e.stopPropagation(); setQuizSet({ ...s, assignmentId: assign?.id }); setScreen("quiz"); }}>풀기</Btn>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {otherSets.length > 0 && (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: T.textMid, marginBottom: 8, letterSpacing: 0.5 }}>📚 자유 풀기</div>
+                  <div style={{ marginBottom: 18 }}>
+                    {otherSets.map(s => (
+                      <Card key={s.id} onClick={() => { setQuizSet(s); setScreen("quiz"); }} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 42, height: 42, background: T.pinkLight, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>📝</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{s.title}</div>
+                          <div style={{ fontSize: 11, color: T.textMid }}>{s.grade} · {s.questions.length}문항</div>
+                        </div>
+                        <div style={{ fontSize: 18, color: T.textDim }}>›</div>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
 
         {/* 게임 영역 */}
         <div style={{ fontSize: 12, fontWeight: 800, color: T.textMid, marginBottom: 8, letterSpacing: 0.5 }}>🎮 단어 게임</div>
@@ -1827,8 +2352,13 @@ function StudentQuiz({ name, setStudents, qset, onExit }) {
     let score = 0;
     qset.questions.forEach(q => { if (picks[q.id] === q.ans) score++; });
     saveStudentRecord(setStudents, name, {
-      type: "assignment", setId: qset.id, setTitle: qset.title,
-      score, total: qset.questions.length, points: score * 8
+      type: "assignment",
+      setId: qset.id,
+      setTitle: qset.title,
+      bankId: qset.id,
+      assignmentId: qset.assignmentId || null, // 배정된 과제면 ID 포함
+      score, total: qset.questions.length,
+      points: score * 8
     });
     setDone(true);
   };
