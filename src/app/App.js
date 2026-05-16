@@ -7,6 +7,23 @@ import {
   AreaChart, Area
 } from "recharts";
 import { QUESTION_BANK } from "./questionData";
+import { WORD_LEVELS, ALL_WORDS, getWordsByLevel } from "./wordData";
+
+// ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
+function speak(text) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  try {
+    window.speechSynthesis.cancel(); // 이전 재생 중지
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.rate = 0.9;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    window.speechSynthesis.speak(utter);
+  } catch (e) {
+    console.warn("Speech synthesis error:", e);
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 //   ANGELA'S ENGLISH ACADEMY - 통합 App.js
@@ -89,25 +106,8 @@ function saveStudentRecord(setStudents, name, record) {
   });
 }
 
-// ── 단어 게임용 단어 데이터 ───────────────────────────────────────────────
-const WORDS = [
-  { en: "apple", ko: "사과", cat: "음식" },
-  { en: "banana", ko: "바나나", cat: "음식" },
-  { en: "tiger", ko: "호랑이", cat: "동물" },
-  { en: "rabbit", ko: "토끼", cat: "동물" },
-  { en: "school", ko: "학교", cat: "학교" },
-  { en: "teacher", ko: "선생님", cat: "학교" },
-  { en: "mother", ko: "엄마", cat: "가족" },
-  { en: "father", ko: "아빠", cat: "가족" },
-  { en: "happy", ko: "행복한", cat: "감정" },
-  { en: "sad", ko: "슬픈", cat: "감정" },
-  { en: "tree", ko: "나무", cat: "자연" },
-  { en: "flower", ko: "꽃", cat: "자연" },
-  { en: "dog", ko: "강아지", cat: "동물" },
-  { en: "cat", ko: "고양이", cat: "동물" },
-  { en: "book", ko: "책", cat: "학교" },
-  { en: "pencil", ko: "연필", cat: "학교" },
-];
+// ── 단어 게임용 단어 데이터 (wordData.js에서 import - 380개) ─────────────
+const WORDS = ALL_WORDS;
 
 // ── INIT 문제은행 (questionData.js에서 import - 900문제) ─────────────────
 const INIT_BANK = QUESTION_BANK;
@@ -279,7 +279,7 @@ function StudentLogin({ onSuccess, onBack }) {
         <Input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="예: 김민준"
+          placeholder="예: Shine"
           style={{ marginBottom: 12, fontSize: 16, textAlign: "center" }}
         />
         <Btn v="primary" size="lg" onClick={submit} disabled={name.trim().length < 2} style={{ width: "100%" }}>
@@ -1365,25 +1365,27 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, savedP
 const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
 
 // ── 게임 1: 단어 맞추기 (뜻 보고 영단어 선택) ─────────────────────────────
-function WordMatchGame({ name, setStudents, onExit }) {
+function WordMatchGame({ name, setStudents, onExit, levelId = "all" }) {
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState(null); // null | "correct" | "wrong"
 
   const questions = useMemo(() => {
-    const picked = shuffle(WORDS).slice(0, 10);
+    const pool = getWordsByLevel(levelId);
+    const picked = shuffle(pool).slice(0, 10);
     return picked.map(w => {
-      const wrongs = shuffle(WORDS.filter(x => x.en !== w.en)).slice(0, 3);
+      const wrongs = shuffle(pool.filter(x => x.en !== w.en)).slice(0, 3);
       const opts = shuffle([w, ...wrongs]);
       return { ...w, opts, ansIdx: opts.findIndex(o => o.en === w.en) };
     });
-  }, []);
+  }, [levelId]);
 
   if (round >= questions.length) {
     // 게임 종료 → 저장
     saveStudentRecord(setStudents, name, {
       type: "game", gameType: "단어 맞추기",
       score, total: questions.length,
+      category: questions[0]?.cat || "기타",
       points: score * 10
     });
     return (
@@ -1452,18 +1454,19 @@ function WordMatchGame({ name, setStudents, onExit }) {
 }
 
 // ── 게임 2: 스펠링 ────────────────────────────────────────────────────────
-function SpellingGame({ name, setStudents, onExit }) {
+function SpellingGame({ name, setStudents, onExit, levelId = "all" }) {
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState(null);
 
-  const questions = useMemo(() => shuffle(WORDS).slice(0, 8), []);
+  const questions = useMemo(() => shuffle(getWordsByLevel(levelId)).slice(0, 8), [levelId]);
 
   if (round >= questions.length) {
     saveStudentRecord(setStudents, name, {
       type: "game", gameType: "스펠링",
       score, total: questions.length,
+      category: questions[0]?.cat || "기타",
       points: score * 15
     });
     return (
@@ -1516,19 +1519,20 @@ function SpellingGame({ name, setStudents, onExit }) {
 }
 
 // ── 게임 3: 스피드 퀴즈 (10초 제한) ───────────────────────────────────────
-function SpeedQuiz({ name, setStudents, onExit }) {
+function SpeedQuiz({ name, setStudents, onExit, levelId = "all" }) {
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(10);
 
   const questions = useMemo(() => {
-    const picked = shuffle(WORDS).slice(0, 10);
+    const pool = getWordsByLevel(levelId);
+    const picked = shuffle(pool).slice(0, 10);
     return picked.map(w => {
-      const wrongs = shuffle(WORDS.filter(x => x.ko !== w.ko)).slice(0, 3);
+      const wrongs = shuffle(pool.filter(x => x.ko !== w.ko)).slice(0, 3);
       const opts = shuffle([w, ...wrongs]);
       return { ...w, opts, ansIdx: opts.findIndex(o => o.ko === w.ko) };
     });
-  }, []);
+  }, [levelId]);
 
   useEffect(() => {
     if (round >= questions.length) return;
@@ -1546,6 +1550,7 @@ function SpeedQuiz({ name, setStudents, onExit }) {
     saveStudentRecord(setStudents, name, {
       type: "game", gameType: "스피드 퀴즈",
       score, total: questions.length,
+      category: questions[0]?.cat || "기타",
       points: score * 12
     });
     return (
@@ -1581,7 +1586,11 @@ function SpeedQuiz({ name, setStudents, onExit }) {
 
       <Card style={{ marginBottom: 16, textAlign: "center", padding: 28, background: T.yellowLight }}>
         <div style={{ fontSize: 12, color: T.textMid, marginBottom: 6 }}>이 단어의 뜻은?</div>
-        <div style={{ fontSize: 36, fontWeight: 900, color: T.yellow }}>{q.en}</div>
+        <div style={{ fontSize: 36, fontWeight: 900, color: T.yellow, marginBottom: 8 }}>{q.en}</div>
+        <button onClick={() => speak(q.en)} style={{
+          background: "rgba(255,255,255,0.7)", border: "none", borderRadius: 10,
+          padding: "6px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: T.yellow
+        }}>🔊 발음</button>
       </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -1596,19 +1605,27 @@ function SpeedQuiz({ name, setStudents, onExit }) {
   );
 }
 
-// ── 게임 4: 플래시카드 ────────────────────────────────────────────────────
-function FlashCard({ name, setStudents, onExit }) {
+// ── 게임 4: 플래시카드 (발음 기능 포함) ───────────────────────────────────
+function FlashCard({ name, setStudents, onExit, levelId = "all" }) {
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const cards = useMemo(() => shuffle(WORDS).slice(0, 10), []);
+  const cards = useMemo(() => shuffle(getWordsByLevel(levelId)).slice(0, 10), [levelId]);
   const [studied, setStudied] = useState(0);
+
+  // 카드가 바뀌면 자동으로 발음 재생
+  useEffect(() => {
+    if (cards[idx]) speak(cards[idx].en);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
 
   const next = () => {
     if (idx < cards.length - 1) { setIdx(idx + 1); setFlipped(false); setStudied(studied + 1); }
     else {
       saveStudentRecord(setStudents, name, {
         type: "game", gameType: "플래시카드",
-        score: studied + 1, total: cards.length, points: cards.length * 5
+        score: studied + 1, total: cards.length,
+        category: cards[0]?.cat || "기타",
+        points: cards.length * 5
       });
       onExit();
     }
@@ -1625,14 +1642,24 @@ function FlashCard({ name, setStudents, onExit }) {
       </div>
 
       <div onClick={() => setFlipped(!flipped)} style={{
-        background: flipped ? T.purple : T.card, borderRadius: 20, padding: "80px 20px",
-        textAlign: "center", color: flipped ? "white" : T.text, marginBottom: 16,
-        cursor: "pointer", boxShadow: T.shadowLg, minHeight: 250, display: "flex",
-        flexDirection: "column", justifyContent: "center", alignItems: "center"
+        background: flipped ? T.purple : T.card, borderRadius: 20, padding: "60px 20px",
+        textAlign: "center", color: flipped ? "white" : T.text, marginBottom: 12,
+        cursor: "pointer", boxShadow: T.shadowLg, minHeight: 220, display: "flex",
+        flexDirection: "column", justifyContent: "center", alignItems: "center", position: "relative"
       }}>
-        <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 10 }}>{flipped ? "뜻" : "단어"} · 탭하여 뒤집기</div>
-        <div style={{ fontSize: 42, fontWeight: 900 }}>{flipped ? c.ko : c.en}</div>
+        <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 8 }}>
+          {flipped ? "뜻" : "단어"} · 탭하여 뒤집기
+        </div>
+        <div style={{ fontSize: 42, fontWeight: 900, marginBottom: 6 }}>{flipped ? c.ko : c.en}</div>
+        <div style={{ fontSize: 12, opacity: 0.65, marginTop: 4 }}>
+          {flipped ? c.en : c.ko} <span style={{ opacity: 0.5 }}>· {c.cat}</span>
+        </div>
       </div>
+
+      {/* 발음 버튼 */}
+      <Btn v="secondary" size="lg" onClick={(e) => { e.stopPropagation(); speak(c.en); }} style={{ width: "100%", marginBottom: 12 }}>
+        🔊 발음 듣기
+      </Btn>
 
       <div style={{ display: "flex", gap: 10 }}>
         <Btn v="secondary" size="lg" onClick={prev} style={{ flex: 1 }} disabled={idx === 0}>← 이전</Btn>
@@ -1642,18 +1669,87 @@ function FlashCard({ name, setStudents, onExit }) {
   );
 }
 
+// ── 수준 선택 화면 (게임 시작 전) ─────────────────────────────────────────
+function LevelSelect({ gameInfo, onSelect, onCancel }) {
+  return (
+    <div style={{ minHeight: "100vh", background: T.bg, padding: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
+        <Btn v="ghost" size="sm" onClick={onCancel}>← 뒤로</Btn>
+      </div>
+
+      <div style={{ textAlign: "center", marginBottom: 22 }}>
+        <div style={{
+          width: 70, height: 70, borderRadius: 18, background: gameInfo.bg, margin: "0 auto 10px",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38
+        }}>{gameInfo.icon}</div>
+        <div style={{ fontSize: 20, fontWeight: 900, color: T.text }}>{gameInfo.name}</div>
+        <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>수준을 선택해 주세요</div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420, margin: "0 auto" }}>
+        {Object.values(WORD_LEVELS).map(lv => {
+          const count = getWordsByLevel(lv.id).length;
+          return (
+            <Card key={lv.id} onClick={() => onSelect(lv.id)} style={{
+              padding: 16, display: "flex", alignItems: "center", gap: 14,
+              background: lv.color, border: `2px solid ${lv.accent}33`
+            }}>
+              <div style={{
+                width: 50, height: 50, borderRadius: 14, background: "white",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0
+              }}>{lv.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: T.text }}>{lv.label}</div>
+                <div style={{ fontSize: 11, color: T.textMid, marginTop: 2 }}>{lv.desc} · 실제 사용 {count}개</div>
+              </div>
+              <div style={{ fontSize: 22, color: lv.accent, fontWeight: 900 }}>›</div>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 18, fontSize: 11, color: T.textDim }}>
+        💡 낮은 수준을 선택하면 그 단계까지의 단어가 모두 포함돼요
+      </div>
+    </div>
+  );
+}
+
 // ── 학생 홈 ───────────────────────────────────────────────────────────────
 function StudentHome({ name, bank, setStudents, students, onLogout }) {
-  const [screen, setScreen] = useState("home"); // home | game-* | quiz
+  const [screen, setScreen] = useState("home"); // home | level-select | game-* | quiz
   const [quizSet, setQuizSet] = useState(null);
+  const [pendingGame, setPendingGame] = useState(null); // {id, info}
+  const [selectedLevel, setSelectedLevel] = useState("all");
 
   const me = students[name] || {};
   const points = me.points || 0;
 
-  if (screen === "game-match") return <WordMatchGame name={name} setStudents={setStudents} onExit={() => setScreen("home")} />;
-  if (screen === "game-spell") return <SpellingGame name={name} setStudents={setStudents} onExit={() => setScreen("home")} />;
-  if (screen === "game-speed") return <SpeedQuiz name={name} setStudents={setStudents} onExit={() => setScreen("home")} />;
-  if (screen === "game-flash") return <FlashCard name={name} setStudents={setStudents} onExit={() => setScreen("home")} />;
+  // 게임 카드 클릭 → 수준 선택으로
+  const startGame = (gameInfo) => {
+    setPendingGame(gameInfo);
+    setScreen("level-select");
+  };
+
+  // 수준 선택 완료 → 실제 게임으로
+  const onLevelSelected = (levelId) => {
+    setSelectedLevel(levelId);
+    setScreen(pendingGame.id);
+  };
+
+  // 게임 종료 → 홈으로
+  const exitGame = () => {
+    setScreen("home");
+    setPendingGame(null);
+  };
+
+  if (screen === "level-select" && pendingGame) {
+    return <LevelSelect gameInfo={pendingGame} onSelect={onLevelSelected} onCancel={exitGame} />;
+  }
+  if (screen === "game-match") return <WordMatchGame name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-spell") return <SpellingGame name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-speed") return <SpeedQuiz name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-flash") return <FlashCard name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
   if (screen === "quiz" && quizSet) {
     return <StudentQuiz name={name} setStudents={setStudents} qset={quizSet} onExit={() => { setScreen("home"); setQuizSet(null); }} />;
   }
@@ -1703,9 +1799,9 @@ function StudentHome({ name, bank, setStudents, students, onLogout }) {
             { id: "game-match", icon: "🎯", name: "단어 맞추기", sub: "뜻 보고 단어 선택", c: T.accent, bg: T.accentLight },
             { id: "game-spell", icon: "🔤", name: "스펠링", sub: "철자 직접 입력", c: T.green, bg: T.greenLight },
             { id: "game-speed", icon: "⚡", name: "스피드 퀴즈", sub: "10초 안에!", c: T.yellow, bg: T.yellowLight },
-            { id: "game-flash", icon: "🧩", name: "플래시카드", sub: "카드 뒤집기", c: T.pink, bg: T.pinkLight },
+            { id: "game-flash", icon: "🧩", name: "플래시카드", sub: "🔊 발음 포함", c: T.pink, bg: T.pinkLight },
           ].map(g => (
-            <Card key={g.id} onClick={() => setScreen(g.id)} style={{ padding: 16, textAlign: "center" }}>
+            <Card key={g.id} onClick={() => startGame(g)} style={{ padding: 16, textAlign: "center" }}>
               <div style={{ width: 56, height: 56, borderRadius: 16, background: g.bg, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{g.icon}</div>
               <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{g.name}</div>
               <div style={{ fontSize: 10, color: T.textMid, marginTop: 2 }}>{g.sub}</div>
