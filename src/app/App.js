@@ -8,6 +8,12 @@ import {
 } from "recharts";
 import { QUESTION_BANK } from "./questionData";
 import { WORD_LEVELS, ALL_WORDS, getWordsByLevel } from "./wordData";
+import {
+  GroupManager, BadgeDisplay, BadgeCelebration, getEarnedBadges,
+  NoticeManager, NoticeBanner, GoalManager, StudentGoalWidget,
+  WeeklyLeague, SentenceGame, ParentViewer, ReportPrint,
+  ScheduleManager, ScheduleBanner
+} from "./features";
 
 // ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
 function speak(text) {
@@ -1200,11 +1206,11 @@ function ExamPrintView({ exam, onBack }) {
 
 const TEACHER_NAV = [
   { id: "dashboard", icon: "📊", label: "대시보드" },
-  { id: "manage", icon: "👤", label: "학생관리" },
-  { id: "assign", icon: "📬", label: "과제배정" },
-  { id: "students", icon: "📈", label: "통계" },
-  { id: "bank", icon: "📚", label: "문제은행" },
-  { id: "settings", icon: "⚙️", label: "설정" },
+  { id: "manage",    icon: "👤", label: "학생관리" },
+  { id: "assign",    icon: "📬", label: "과제배정" },
+  { id: "students",  icon: "📈", label: "통계" },
+  { id: "bank",      icon: "📚", label: "문제은행" },
+  { id: "more",      icon: "✨", label: "더보기" },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -2122,20 +2128,29 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStu
   const [screen, setScreen] = useState("dashboard");
   const [viewExamId, setViewExamId] = useState(null);
   const [assignments, setAssignments] = useStorage("angela_assignments", []);
+  const [groups,      setGroups]      = useStorage("angela_groups",      []);
+  const [notices,     setNotices]     = useStorage("angela_notices",     []);
+  const [goals,       setGoals]       = useStorage("angela_goals",       []);
+  const [schedules,   setSchedules]   = useStorage("angela_schedules",   []);
 
-  const onNav = (s, id) => {
-    setScreen(s);
-    if (id) setViewExamId(id);
-  };
-
+  const onNav = (s, id) => { setScreen(s); if (id) setViewExamId(id); };
   const examView = exams.find(e => e.id === viewExamId);
+
+  // ── "더보기" 메뉴 ──
+  const MORE_MENU = [
+    { id:"groups",   icon:"👥", label:"반별 그룹 관리",    desc:"반 만들고 한 번에 과제 배정" },
+    { id:"goals",    icon:"🎯", label:"목표 설정",          desc:"학생별 월간 목표 지정" },
+    { id:"notice",   icon:"💬", label:"공지 & 메시지",      desc:"학생 앱에 공지 띄우기" },
+    { id:"schedule", icon:"📅", label:"수업 일정",          desc:"일정 등록 → 학생 D-day 알림" },
+    { id:"league",   icon:"🏆", label:"주간 리그",          desc:"이번 주 포인트 순위" },
+    { id:"report",   icon:"📋", label:"월간 성적표",        desc:"PDF 인쇄용 성적표 생성" },
+    { id:"parent",   icon:"👨‍👩‍👧", label:"학부모 뷰어",       desc:"자녀 학습 현황 보기" },
+    { id:"settings", icon:"⚙️", label:"설정",              desc:"비밀번호 변경" },
+  ];
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, paddingBottom: 80 }}>
-      <div style={{
-        background: T.card, borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 50,
-        padding: "10px 14px", display: "flex", alignItems: "center", gap: 10
-      }}>
+      <div style={{ background: T.card, borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, zIndex: 50, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ fontSize: 22 }}>👩‍🏫</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 900, color: T.text }}>Angela's Academy</div>
@@ -2145,36 +2160,48 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStu
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "16px 12px" }}>
-        {screen === "dashboard" && <TeacherHome bank={bank} exams={exams} students={students} onNav={onNav} />}
-        {screen === "manage" && <StudentManager students={students} setStudents={setStudents} />}
-        {screen === "assign" && <AssignmentManager students={students} bank={bank} assignments={assignments} setAssignments={setAssignments} />}
-        {screen === "students" && <StatsDashboard students={students} />}
-        {screen === "bank" && <QuestionBank bank={bank} setBank={setBank} />}
+        {screen === "dashboard"  && <TeacherHome bank={bank} exams={exams} students={students} onNav={onNav} />}
+        {screen === "manage"     && <StudentManager students={students} setStudents={setStudents} />}
+        {screen === "assign"     && <AssignmentManager students={students} bank={bank} assignments={assignments} setAssignments={setAssignments} />}
+        {screen === "students"   && <StatsDashboard students={students} />}
+        {screen === "bank"       && <QuestionBank bank={bank} setBank={setBank} />}
         {screen === "exam-builder" && <ExamBuilder bank={bank} setExams={setExams} onNav={onNav} />}
-        {screen === "exams" && <ExamList exams={exams} setExams={setExams} onNav={onNav} />}
-        {screen === "exam-view" && examView && <ExamPrintView exam={examView} onBack={() => onNav("exams")} />}
-        {screen === "settings" && <TeacherSettings savedPw={savedPw} setSavedPw={setSavedPw} />}
+        {screen === "exams"      && <ExamList exams={exams} setExams={setExams} onNav={onNav} />}
+        {screen === "exam-view"  && examView && <ExamPrintView exam={examView} onBack={() => onNav("exams")} />}
+        {screen === "settings"   && <TeacherSettings savedPw={savedPw} setSavedPw={setSavedPw} />}
+        {/* Phase 1 */}
+        {screen === "groups"     && <GroupManager students={students} groups={groups} setGroups={setGroups} assignments={assignments} setAssignments={setAssignments} bank={bank} />}
+        {screen === "goals"      && <GoalManager students={students} goals={goals} setGoals={setGoals} />}
+        {screen === "notice"     && <NoticeManager notices={notices} setNotices={setNotices} />}
+        {/* Phase 2 */}
+        {screen === "schedule"   && <ScheduleManager schedules={schedules} setSchedules={setSchedules} />}
+        {screen === "league"     && <WeeklyLeague students={students} />}
+        {screen === "report"     && <ReportPrint students={students} />}
+        {screen === "parent"     && <ParentViewer students={students} />}
+        {/* 더보기 메뉴 */}
+        {screen === "more" && (
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: T.text, marginBottom: 4 }}>✨ 더 많은 기능</div>
+            <div style={{ fontSize: 11, color: T.textMid, marginBottom: 14 }}>Phase 1 & 2 신규 기능</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+              {MORE_MENU.map(m => (
+                <Card key={m.id} onClick={() => onNav(m.id)} style={{ padding: 14, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>{m.icon}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 4 }}>{m.label}</div>
+                  <div style={{ fontSize: 10, color: T.textMid, lineHeight: 1.4 }}>{m.desc}</div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 하단 네비 */}
-      <div className="no-print" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, background: T.card,
-        borderTop: `1px solid ${T.border}`, display: "flex", zIndex: 100,
-        boxShadow: "0 -2px 12px rgba(59,110,248,0.08)"
-      }}>
+      <div className="no-print" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: T.card, borderTop: `1px solid ${T.border}`, display: "flex", zIndex: 100, boxShadow: "0 -2px 12px rgba(59,110,248,0.08)" }}>
         {TEACHER_NAV.map(n => (
-          <button key={n.id} onClick={() => onNav(n.id)} style={{
-            flex: 1, background: "none", border: "none", padding: "8px 2px 14px",
-            cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2
-          }}>
-            <div style={{
-              fontSize: 20, transition: "transform 0.15s",
-              transform: screen === n.id ? "scale(1.2)" : "scale(1)"
-            }}>{n.icon}</div>
-            <div style={{
-              fontSize: 9, fontWeight: 800,
-              color: screen === n.id ? T.accent : T.textDim
-            }}>{n.label}</div>
+          <button key={n.id} onClick={() => onNav(n.id)} style={{ flex: 1, background: "none", border: "none", padding: "8px 2px 14px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <div style={{ fontSize: 20, transition: "transform 0.15s", transform: screen === n.id ? "scale(1.2)" : "scale(1)" }}>{n.icon}</div>
+            <div style={{ fontSize: 9, fontWeight: 800, color: screen === n.id ? T.accent : T.textDim }}>{n.label}</div>
             {screen === n.id && <div style={{ width: 16, height: 2.5, borderRadius: 2, background: T.accent, marginTop: 1 }} />}
           </button>
         ))}
@@ -2703,47 +2730,52 @@ function LevelSelect({ gameInfo, onSelect, onCancel }) {
 
 // ── 학생 홈 ───────────────────────────────────────────────────────────────
 function StudentHome({ name, bank, setStudents, students, onLogout }) {
-  const [screen, setScreen] = useState("home"); // home | level-select | game-* | quiz
+  const [screen, setScreen] = useState("home");
   const [quizSet, setQuizSet] = useState(null);
-  const [pendingGame, setPendingGame] = useState(null); // {id, info}
+  const [pendingGame, setPendingGame] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState("all");
+  const [newBadges, setNewBadges] = useState([]);
+  const [tab, setTab] = useState("game"); // game | badge
 
   const me = students[name] || {};
   const points = me.points || 0;
 
-  // 게임 카드 클릭 → 수준 선택으로
-  const startGame = (gameInfo) => {
-    setPendingGame(gameInfo);
-    setScreen("level-select");
-  };
+  const notices   = useMemo(()=>{ try { return JSON.parse(localStorage.getItem("angela_notices")||"[]"); } catch { return []; } },[screen]);
+  const schedules = useMemo(()=>{ try { return JSON.parse(localStorage.getItem("angela_schedules")||"[]"); } catch { return []; } },[screen]);
+  const goals     = useMemo(()=>{ try { return JSON.parse(localStorage.getItem("angela_goals")||"[]"); } catch { return []; } },[screen]);
 
-  // 수준 선택 완료 → 실제 게임으로
-  const onLevelSelected = (levelId) => {
-    setSelectedLevel(levelId);
-    setScreen(pendingGame.id);
-  };
+  useEffect(()=>{
+    if (!me.name || screen !== "home") return;
+    try {
+      const alreadyKey = "angela_earned_badges_" + name;
+      const already = new Set(JSON.parse(localStorage.getItem(alreadyKey)||"[]"));
+      const nowBadges = getEarnedBadges(me);
+      const fresh = nowBadges.filter(b => !already.has(b.id));
+      if (fresh.length) {
+        setNewBadges(fresh);
+        localStorage.setItem(alreadyKey, JSON.stringify(nowBadges.map(b=>b.id)));
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[screen, points]);
 
-  // 게임 종료 → 홈으로
-  const exitGame = () => {
-    setScreen("home");
-    setPendingGame(null);
-  };
+  const startGame = (gameInfo) => { setPendingGame(gameInfo); setScreen("level-select"); };
+  const onLevelSelected = (levelId) => { setSelectedLevel(levelId); setScreen(pendingGame.id); };
+  const exitGame = () => { setScreen("home"); setPendingGame(null); };
 
-  if (screen === "level-select" && pendingGame) {
-    return <LevelSelect gameInfo={pendingGame} onSelect={onLevelSelected} onCancel={exitGame} />;
-  }
-  if (screen === "game-match") return <WordMatchGame name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
-  if (screen === "game-spell") return <SpellingGame name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
-  if (screen === "game-speed") return <SpeedQuiz name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
-  if (screen === "game-flash") return <FlashCard name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
-  if (screen === "quiz" && quizSet) {
-    return <StudentQuiz name={name} setStudents={setStudents} qset={quizSet} onExit={() => { setScreen("home"); setQuizSet(null); }} />;
-  }
+  if (screen === "level-select" && pendingGame) return <LevelSelect gameInfo={pendingGame} onSelect={onLevelSelected} onCancel={exitGame} />;
+  if (screen === "game-match")    return <WordMatchGame name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-spell")    return <SpellingGame  name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-speed")    return <SpeedQuiz     name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-flash")    return <FlashCard     name={name} setStudents={setStudents} onExit={exitGame} levelId={selectedLevel} />;
+  if (screen === "game-sentence") return <SentenceGame  name={name} setStudents={setStudents} onExit={exitGame} />;
+  if (screen === "quiz" && quizSet) return <StudentQuiz name={name} setStudents={setStudents} qset={quizSet} onExit={() => { setScreen("home"); setQuizSet(null); }} />;
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
 
   return (
+    <>
     <div style={{ minHeight: "100vh", background: T.bg, paddingBottom: 40 }}>
       <div style={{
         background: `linear-gradient(135deg, ${T.pink} 0%, ${T.accent} 100%)`,
@@ -2761,6 +2793,10 @@ function StudentHome({ name, bank, setStudents, students, onLogout }) {
           </div>
         </div>
       </div>
+
+      {/* 공지/일정 배너 */}
+      <NoticeBanner notices={notices} />
+      <ScheduleBanner schedules={schedules} />
 
       <div style={{ padding: "16px 12px", maxWidth: 480, margin: "0 auto" }}>
         {/* 배정된 과제 */}
@@ -2824,26 +2860,58 @@ function StudentHome({ name, bank, setStudents, students, onLogout }) {
           );
         })()}
 
-        {/* 게임 영역 */}
-        <div style={{ fontSize: 12, fontWeight: 800, color: T.textMid, marginBottom: 8, letterSpacing: 0.5 }}>🎮 단어 게임</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {[
-            { id: "game-match", icon: "🎯", name: "단어 맞추기", sub: "뜻 보고 단어 선택", c: T.accent, bg: T.accentLight },
-            { id: "game-spell", icon: "🔤", name: "스펠링", sub: "철자 직접 입력", c: T.green, bg: T.greenLight },
-            { id: "game-speed", icon: "⚡", name: "스피드 퀴즈", sub: "10초 안에!", c: T.yellow, bg: T.yellowLight },
-            { id: "game-flash", icon: "🧩", name: "플래시카드", sub: "🔊 발음 포함", c: T.pink, bg: T.pinkLight },
-          ].map(g => (
-            <Card key={g.id} onClick={() => startGame(g)} style={{ padding: 16, textAlign: "center" }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: g.bg, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{g.icon}</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{g.name}</div>
-              <div style={{ fontSize: 10, color: T.textMid, marginTop: 2 }}>{g.sub}</div>
-            </Card>
+        {/* 탭 선택 */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, background: T.card, padding: 5, borderRadius: 12, boxShadow: T.shadow }}>
+          {[{ id:"game", label:"🎮 게임" }, { id:"badge", label:"🏅 내 뱃지" }].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flex: 1, padding: "9px 6px", borderRadius: 8, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 800,
+              background: tab === t.id ? T.accent : "transparent",
+              color: tab === t.id ? "white" : T.textMid
+            }}>{t.label}</button>
           ))}
         </div>
+
+        {tab === "game" && (
+          <>
+            {/* 목표 위젯 */}
+            <StudentGoalWidget studentName={name} goals={goals} />
+
+            {/* 게임 카드 5개 */}
+            <div style={{ fontSize: 12, fontWeight: 800, color: T.textMid, marginBottom: 8, letterSpacing: 0.5 }}>🎮 단어 게임</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+              {[
+                { id: "game-match",    icon: "🎯", name: "단어 맞추기",  sub: "뜻 보고 단어 선택",   bg: T.accentLight },
+                { id: "game-spell",    icon: "🔤", name: "스펠링",        sub: "철자 직접 입력",       bg: T.greenLight },
+                { id: "game-speed",    icon: "⚡", name: "스피드 퀴즈",  sub: "10초 안에!",           bg: T.yellowLight },
+                { id: "game-flash",    icon: "🧩", name: "플래시카드",   sub: "🔊 발음 포함",         bg: T.pinkLight },
+                { id: "game-sentence", icon: "📝", name: "문장 빈칸",    sub: "문장에 알맞은 단어",   bg: T.purpleLight },
+              ].map(g => (
+                <Card key={g.id}
+                  onClick={() => g.id === "game-sentence" ? setScreen("game-sentence") : startGame(g)}
+                  style={{ padding: 16, textAlign: "center" }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: g.bg, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{g.icon}</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{g.name}</div>
+                  <div style={{ fontSize: 10, color: T.textMid, marginTop: 2 }}>{g.sub}</div>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === "badge" && (
+          <BadgeDisplay student={me} />
+        )}
 
         <Btn v="ghost" size="md" onClick={onLogout} style={{ width: "100%", marginTop: 20 }}>로그아웃</Btn>
       </div>
     </div>
+
+    {/* 뱃지 획득 축하 */}
+    {newBadges.length > 0 && (
+      <BadgeCelebration badges={newBadges} onClose={() => setNewBadges([])} />
+    )}
+    </>
   );
 }
 
