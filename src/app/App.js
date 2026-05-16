@@ -16,8 +16,9 @@ import {
 } from "./features";
 import {
   MemoryCardGame, DailyChallenge, WrongNoteGame, AnagramGame,
-  TypingRace, WordRelay, WordTwenty, WordWorldRPG
+  TypingRace, WordRelay, WordTwenty, WordWorldRPG, recordWrong
 } from "./games";
+import { AIQuestionGenerator } from "./aiQuestions";
 
 // ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
 function speak(text) {
@@ -61,6 +62,8 @@ const T = {
   pinkLight: "#fce7f3",
   orange: "#f97316",
   orangeLight: "#fff7ed",
+  teal: "#14b8a6",
+  tealLight: "#ccfbf1",
   text: "#1e293b",
   textMid: "#64748b",
   textDim: "#94a3b8",
@@ -944,7 +947,13 @@ function StatsDashboard({ students }) {
 function QuestionBank({ bank, setBank }) {
   const [selId, setSelId] = useState(Object.keys(bank)[0] || null);
   const [editing, setEditing] = useState(null);
+  const [aiMode, setAiMode] = useState(false); // AI 생성 화면 토글
   const sel = selId ? bank[selId] : null;
+
+  // AI 생성 화면
+  if (aiMode) {
+    return <AIQuestionGenerator bank={bank} setBank={setBank} onBack={() => setAiMode(false)} />;
+  }
 
   const addSet = () => {
     const id = uid();
@@ -983,6 +992,17 @@ function QuestionBank({ bank, setBank }) {
 
   return (
     <div>
+      {/* AI 생성 배너 */}
+      <div style={{background:`linear-gradient(135deg,${T.purple},${T.accent})`,borderRadius:14,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+        <div style={{color:"white"}}>
+          <div style={{fontSize:13,fontWeight:900}}>🤖 AI 문제 자동 생성</div>
+          <div style={{fontSize:11,opacity:.85,marginTop:2}}>주제만 입력하면 Claude가 즉시 생성!</div>
+        </div>
+        <Btn v="secondary" size="sm" onClick={() => setAiMode(true)} style={{background:"rgba(255,255,255,0.9)",color:T.purple,fontWeight:900,flexShrink:0}}>
+          AI 생성 →
+        </Btn>
+      </div>
+
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         {Object.values(bank).map(s => (
           <button key={s.id} onClick={() => setSelId(s.id)} style={{
@@ -2744,12 +2764,13 @@ function StudentHome({ name, bank, setStudents, students, onLogout }) {
   const me = students[name] || {};
   const points = me.points || 0;
 
-  const notices   = useMemo(()=>{ try { return JSON.parse(localStorage.getItem("angela_notices")||"[]"); } catch { return []; } },[screen]);
-  const schedules = useMemo(()=>{ try { return JSON.parse(localStorage.getItem("angela_schedules")||"[]"); } catch { return []; } },[screen]);
-  const goals     = useMemo(()=>{ try { return JSON.parse(localStorage.getItem("angela_goals")||"[]"); } catch { return []; } },[screen]);
+  // SSR 안전: useEffect 내에서 읽거나 isBrowser 체크
+  const notices   = useMemo(()=>{ if (typeof window==="undefined") return []; try { return JSON.parse(localStorage.getItem("angela_notices")||"[]"); } catch { return []; } },[screen]);
+  const schedules = useMemo(()=>{ if (typeof window==="undefined") return []; try { return JSON.parse(localStorage.getItem("angela_schedules")||"[]"); } catch { return []; } },[screen]);
+  const goals     = useMemo(()=>{ if (typeof window==="undefined") return []; try { return JSON.parse(localStorage.getItem("angela_goals")||"[]"); } catch { return []; } },[screen]);
 
   useEffect(()=>{
-    if (!me.name || screen !== "home") return;
+    if (!me.name || screen !== "home" || typeof window==="undefined") return;
     try {
       const alreadyKey = "angela_earned_badges_" + name;
       const already = new Set(JSON.parse(localStorage.getItem(alreadyKey)||"[]"));
@@ -2815,7 +2836,7 @@ function StudentHome({ name, bank, setStudents, students, onLogout }) {
         {/* 배정된 과제 */}
         {(() => {
           const myAssigns = (typeof window !== "undefined"
-            ? JSON.parse(window.localStorage.getItem("angela_assignments") || "[]")
+            ? (()=>{try{return JSON.parse(localStorage.getItem("angela_assignments")||"[]");}catch{return [];}})()
             : []).filter(a => a.studentName === name);
           const assignedBankIds = myAssigns.map(a => a.bankId);
           const assignedSets = assignedBankIds.map(id => bank[id]).filter(Boolean);

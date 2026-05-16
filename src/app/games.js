@@ -23,6 +23,25 @@ const T = {
   shadowLg:"0 8px 32px rgba(79,142,247,0.18)",
 };
 
+// ── SSR 안전 유틸 ──────────────────────────────────────────────────────────
+const isBrowser = typeof window !== "undefined";
+const ls = {
+  get: (key, fallback=null) => {
+    if (!isBrowser) return fallback;
+    try { const v=ls.raw(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  },
+  set: (key, val) => {
+    if (!isBrowser) return;
+    try { ls.set(key, val); } catch {}
+  },
+  raw: (key) => {
+    if (!isBrowser) return null;
+    try { return ls.raw(key); } catch { return null; }
+  },
+};
+const safeRAF = (cb) => isBrowser ? safeRAF(cb) : 0;
+const safeCAF = (id) => { if (isBrowser && id) cancelAnimationFrame(id); };
+
 const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -199,7 +218,7 @@ export function DailyChallenge({ name, setStudents, onExit }) {
   const today = new Date().toISOString().slice(0, 10);
   const storageKey = `angela_daily_${name}_${today}`;
   const [status, setStatus] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey)||"null"); } catch { return null; }
+    try { return ls.get(storageKey, null); } catch { return null; }
   });
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
@@ -244,7 +263,7 @@ export function DailyChallenge({ name, setStudents, onExit }) {
         return {...prev,[name]:{...s,points:(s.points||0)+pts,records:[...(s.records||[]),{type:"game",gameType:"데일리챌린지",score,total:5,points:pts,date:new Date().toISOString()}].slice(-50)}};
       });
     }
-    localStorage.setItem(storageKey, JSON.stringify({score, completedAt:new Date().toISOString()}));
+    ls.set(storageKey, {score, completedAt:new Date().toISOString()});
     return (
       <div style={{minHeight:"100vh",background:T.bg,padding:"48px 20px",textAlign:"center"}}>
         <div style={{fontSize:72,marginBottom:12}}>{score===5?"🏆":score>=3?"🎉":"💪"}</div>
@@ -336,7 +355,7 @@ function getStreak(name) {
   for(let i=0;i<30;i++){
     const d=new Date(today);d.setDate(today.getDate()-i);
     const key=`angela_daily_${name}_${d.toISOString().slice(0,10)}`;
-    if(localStorage.getItem(key)) streak++; else break;
+    if(ls.raw(key)) streak++; else break;
   }
   return streak;
 }
@@ -355,7 +374,7 @@ export function WrongNoteGame({ name, students, setStudents, onExit }) {
   const wrongWords = useMemo(()=>{
     const wrongKey = `angela_wrong_${name}`;
     try {
-      const data = JSON.parse(localStorage.getItem(wrongKey)||"{}");
+      const data = ls.get(wrongKey, {});
       const candidates = Object.entries(data)
         .filter(([,v])=>v.wrong>0)
         .sort(([,a],[,b])=>b.wrong-a.wrong)
@@ -397,17 +416,17 @@ export function WrongNoteGame({ name, students, setStudents, onExit }) {
     // 오답 기록 업데이트
     const key=`angela_wrong_${name}`;
     try{
-      const data=JSON.parse(localStorage.getItem(key)||"{}");
+      const data=ls.get(key, {});
       data[q.en]=data[q.en]||{wrong:0,correct:0};
       if(idx===q.ansIdx){data[q.en].correct++;setScore(s=>s+1);}
       else data[q.en].wrong++;
-      localStorage.setItem(key,JSON.stringify(data));
+      ls.set(key, data);
     }catch{}
   };
 
   const next=()=>{setPicked(null);if(round<wrongWords.length-1)setRound(r=>r+1);else setDone(true);};
 
-  const wrongCount=()=>{try{const d=JSON.parse(localStorage.getItem(`angela_wrong_${name}`)||"{}");return d[q.en]?.wrong||0;}catch{return 0;}};
+  const wrongCount=()=>{try{const d=ls.get(`angela_wrong_${name}`, {});return d[q.en]?.wrong||0;}catch{return 0;}};
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,padding:16}}>
@@ -440,10 +459,10 @@ export function WrongNoteGame({ name, students, setStudents, onExit }) {
 export function recordWrong(name, wordEn, isCorrect) {
   try {
     const key=`angela_wrong_${name}`;
-    const data=JSON.parse(localStorage.getItem(key)||"{}");
+    const data=ls.get(key, {});
     data[wordEn]=data[wordEn]||{wrong:0,correct:0};
     if(isCorrect)data[wordEn].correct++; else data[wordEn].wrong++;
-    localStorage.setItem(key,JSON.stringify(data));
+    ls.set(key, data);
   } catch {}
 }
 
@@ -596,16 +615,16 @@ export function TypingRace({ name, setStudents, onExit }) {
       }
       return alive;
     });
-    frameRef.current=requestAnimationFrame(tick);
+    frameRef.current=safeRAF(tick);
   },[started,done,level,spawnWord]);
 
   useEffect(()=>{
     if(started&&!done){
       lastSpawn.current=Date.now();
-      frameRef.current=requestAnimationFrame(tick);
+      frameRef.current=safeRAF(tick);
       inputRef.current?.focus();
     }
-    return ()=>{if(frameRef.current)cancelAnimationFrame(frameRef.current);};
+    return ()=>{if(frameRef.current)safeCAF(frameRef.current);};
   },[started,done,tick]);
 
   // 레벨업
@@ -879,7 +898,7 @@ const ITEMS = [
 
 export function WordWorldRPG({ name, setStudents, onExit }) {
   const saveKey = `angela_rpg_${name}`;
-  const initSave = ()=>{try{return JSON.parse(localStorage.getItem(saveKey)||"null");}catch{return null;}};
+  const initSave = ()=>{try{return ls.get(saveKey, null);}catch{return null;}};
 
   const [screen, setScreen] = useState("worldMap"); // worldMap | battle | result
   const [selectedWorld, setSelectedWorld] = useState(null);
@@ -897,7 +916,7 @@ export function WordWorldRPG({ name, setStudents, onExit }) {
   const [feedback, setFeedback] = useState(null);
   const [battleItems, setBattleItems] = useState([]);
 
-  const persist=(s)=>{setSaveState(s);try{localStorage.setItem(saveKey,JSON.stringify(s));}catch{}};
+  const persist=(s)=>{setSaveState(s);try{ls.set(saveKey, s);}catch{}};
 
   const startBattle=(world)=>{
     const pool=getWordsByLevel(world.wordLevel);
