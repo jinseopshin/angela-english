@@ -38,64 +38,24 @@ function Card({ children, style={} }) {
 const GRADES = ["유치원","초등1","초등2","초등3","초등4","초등5","초등6","중1","중2","중3"];
 const TAGS = ["be동사","일반동사","조동사","시제","의문문","부정문","어휘","비교급","수동태","기타"];
 
-const GRADE_DESC = {
-  "유치원":"매우 쉬운 단어와 그림 설명 위주",
-  "초등1":"간단한 단어, 1~2단어 답",
-  "초등2":"기초 문장 이해",
-  "초등3":"기본 어휘, 단문 이해",
-  "초등4":"초등 기본 문법 이해",
-  "초등5":"초등 중급 문법",
-  "초등6":"초등 고급, 중학 기초",
-  "중1":"중학교 1학년 수준",
-  "중2":"중학교 2학년 수준",
-  "중3":"중학교 3학년 수준",
-};
-
-// Claude API 호출
-async function callClaude(prompt) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+// Claude API 호출 — 내 서버(Next.js API Route)를 통해 안전하게 호출
+// API 키는 서버 환경변수에만 존재, 클라이언트에 절대 노출 안됨
+async function callClaude(topic, grade, tag, count) {
+  const res = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
-    }),
+    body: JSON.stringify({ topic, grade, tag, count }),
   });
-  if (!res.ok) throw new Error(`API 오류: ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text || "";
-}
 
-// AI 응답 파싱 → 문제 배열
-function parseQuestions(raw, startId) {
-  let parsed = null;
-  // JSON 블록 추출
-  const jsonMatch = raw.match(/```json\s*([\s\S]*?)```/) ||
-                    raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
-  try {
-    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : raw;
-    parsed = JSON.parse(jsonStr.trim());
-  } catch {
-    // JSON 파싱 실패 시 배열 직접 찾기
-    const arrMatch = raw.match(/\[[\s\S]*\]/);
-    if (arrMatch) {
-      try { parsed = JSON.parse(arrMatch[0]); } catch {}
-    }
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || `서버 오류 (${res.status})`);
   }
 
-  if (!Array.isArray(parsed)) return [];
-
-  return parsed.map((q, i) => ({
-    id: startId + i,
-    q: q.q || q.question || "",
-    opts: Array.isArray(q.opts) ? q.opts.slice(0, 5) :
-          Array.isArray(q.options) ? q.options.slice(0, 5) : ["","","","",""],
-    ans: typeof q.ans === "number" ? q.ans :
-         typeof q.answer === "number" ? q.answer : 0,
-    exp: q.exp || q.explanation || "",
-  })).filter(q => q.q && q.opts.length >= 2);
+  return data.questions || [];
 }
+
 
 // ── AI 문제 생성 화면 ──────────────────────────────────────────────────────
 export function AIQuestionGenerator({ bank, setBank, onBack }) {
@@ -121,49 +81,23 @@ export function AIQuestionGenerator({ bank, setBank, onBack }) {
     if (!topic.trim()) { setError("주제를 입력해주세요"); return; }
     setError("");
     setStep("generating");
-    setProgress("Claude AI에게 요청 중...");
-
-    const gradeDesc = GRADE_DESC[grade] || grade;
-    const prompt = `당신은 한국 초중등 영어 선생님을 돕는 AI입니다.
-아래 조건에 맞는 영어 객관식 문제 ${count}개를 JSON 배열로 생성해주세요.
-
-조건:
-- 주제: ${topic}
-- 학년/수준: ${grade} (${gradeDesc})
-- 문법 태그: ${tag}
-- 문항 수: ${count}개
-- 모든 문제는 5지 선다형 (보기 5개)
-- 학생이 정답을 고를 수 있도록 보기 구성
-- 정답 번호는 0~4 중 하나 (0이 첫 번째 보기)
-- 해설은 간결하게 한 줄
-
-반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
-[
-  {
-    "q": "문제 내용 (빈칸은 ____로 표시)",
-    "opts": ["보기1","보기2","보기3","보기4","보기5"],
-    "ans": 정답인덱스(0~4),
-    "exp": "해설"
-  }
-]`;
+    setProgress("서버에 요청 중...");
 
     try {
       setProgress("AI가 문제를 만드는 중... ✍️");
-      const raw = await callClaude(prompt);
-      setProgress("응답 파싱 중...");
+      // 서버 API Route 호출 (API 키는 서버에서만 사용)
+      const qs = await callClaude(topic.trim(), grade, tag, count);
+      setProgress("완료!");
 
-      const startId = Date.now();
-      const qs = parseQuestions(raw, startId);
-
-      if (qs.length === 0) {
-        setError("문제 생성에 실패했어요. 다시 시도해주세요.");
+      if (!qs || qs.length === 0) {
+        setError("문제 생성에 실패했어요. 주제를 바꿔서 다시 시도해주세요.");
         setStep("config");
         return;
       }
 
       setGenerated(qs);
       setEditedQs(qs.map(q => ({ ...q })));
-      setSetTitle(`${topic} (${grade})`);
+      setSetTitle(`${topic.trim()} (${grade})`);
       setStep("preview");
     } catch (e) {
       setError("오류: " + e.message);
