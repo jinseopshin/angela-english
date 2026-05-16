@@ -1200,12 +1200,357 @@ function ExamPrintView({ exam, onBack }) {
 
 const TEACHER_NAV = [
   { id: "dashboard", icon: "📊", label: "대시보드" },
+  { id: "manage", icon: "👤", label: "학생관리" },
   { id: "assign", icon: "📬", label: "과제배정" },
-  { id: "students", icon: "👥", label: "학생통계" },
+  { id: "students", icon: "📈", label: "통계" },
   { id: "bank", icon: "📚", label: "문제은행" },
-  { id: "exams", icon: "📝", label: "시험지" },
   { id: "settings", icon: "⚙️", label: "설정" },
 ];
+
+// ══════════════════════════════════════════════════════════════════════════
+//   학생 관리 화면 (선생님용)
+// ══════════════════════════════════════════════════════════════════════════
+function StudentManager({ students, setStudents }) {
+  const [mode, setMode] = useState("list"); // list | add | edit
+  const [editTarget, setEditTarget] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("name"); // name | grade | points | recent
+
+  // 추가/편집 폼 상태
+  const [form, setForm] = useState({ name: "", grade: "초등5", avatar: "🦊", memo: "" });
+  const [formErr, setFormErr] = useState("");
+
+  const studentList = Object.values(students || {});
+
+  const filtered = studentList
+    .filter(s => !search || s.name.includes(search))
+    .sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name, "ko");
+      if (sortBy === "grade") return (a.grade || "").localeCompare(b.grade || "");
+      if (sortBy === "points") return (b.points || 0) - (a.points || 0);
+      if (sortBy === "recent") {
+        const la = a.records?.slice(-1)[0]?.date || "";
+        const lb = b.records?.slice(-1)[0]?.date || "";
+        return lb.localeCompare(la);
+      }
+      return 0;
+    });
+
+  const openAdd = () => {
+    setForm({ name: "", grade: "초등5", avatar: "🦊", memo: "" });
+    setFormErr("");
+    setMode("add");
+  };
+
+  const openEdit = (s) => {
+    setForm({ name: s.name, grade: s.grade || "초등5", avatar: s.avatar || "🦊", memo: s.memo || "" });
+    setEditTarget(s.name);
+    setFormErr("");
+    setMode("edit");
+  };
+
+  const saveAdd = () => {
+    const n = form.name.trim();
+    if (!n) { setFormErr("이름을 입력해주세요"); return; }
+    if (n.length < 2) { setFormErr("이름은 2자 이상이어야 해요"); return; }
+    if (students[n]) { setFormErr("이미 같은 이름의 학생이 있어요"); return; }
+    setStudents(prev => ({
+      ...prev,
+      [n]: {
+        name: n,
+        grade: form.grade,
+        avatar: form.avatar,
+        memo: form.memo,
+        joinDate: new Date().toISOString().slice(0, 10),
+        points: 0,
+        records: []
+      }
+    }));
+    setMode("list");
+  };
+
+  const saveEdit = () => {
+    const n = form.name.trim();
+    if (!n) { setFormErr("이름을 입력해주세요"); return; }
+    setStudents(prev => {
+      const old = prev[editTarget];
+      const updated = { ...old, grade: form.grade, avatar: form.avatar, memo: form.memo };
+      // 이름이 바뀌면 key도 교체
+      if (n !== editTarget) {
+        if (prev[n]) { setFormErr("이미 같은 이름의 학생이 있어요"); return prev; }
+        updated.name = n;
+        const next = { ...prev };
+        delete next[editTarget];
+        next[n] = updated;
+        return next;
+      }
+      return { ...prev, [editTarget]: updated };
+    });
+    setMode("list");
+  };
+
+  const deleteStudent = (name) => {
+    if (!confirm(`"${name}" 학생을 삭제할까요?\n학습 기록도 모두 삭제됩니다.`)) return;
+    setStudents(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
+  const resetRecords = (name) => {
+    if (!confirm(`"${name}" 학생의 학습 기록만 초기화할까요?`)) return;
+    setStudents(prev => ({
+      ...prev,
+      [name]: { ...prev[name], records: [], points: 0 }
+    }));
+  };
+
+  // ── 학생 추가/편집 폼 ──
+  if (mode === "add" || mode === "edit") {
+    const isEdit = mode === "edit";
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+          <Btn v="ghost" size="sm" onClick={() => setMode("list")}>← 뒤로</Btn>
+          <div style={{ fontSize: 16, fontWeight: 900, color: T.text }}>
+            {isEdit ? "✏️ 학생 정보 수정" : "➕ 새 학생 추가"}
+          </div>
+        </div>
+
+        <Card style={{ marginBottom: 14 }}>
+          {/* 아바타 선택 */}
+          <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 8 }}>아바타 선택</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {["🦊","🐰","🐻","🦁","🐼","🐨","🦝","🐯","🐶","🐱","🐵","🦄","🐸","🐧","🦋","🐬","🦉","🐺"].map(av => (
+              <button key={av} onClick={() => setForm(f => ({ ...f, avatar: av }))} style={{
+                width: 40, height: 40, borderRadius: 11, fontSize: 22, border: "none", cursor: "pointer",
+                background: form.avatar === av ? T.accent + "30" : T.bg,
+                outline: form.avatar === av ? `2.5px solid ${T.accent}` : "none",
+                transition: "all 0.15s"
+              }}>{av}</button>
+            ))}
+          </div>
+
+          {/* 미리보기 */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
+            background: T.accentLight, borderRadius: 12, marginBottom: 16
+          }}>
+            <div style={{ fontSize: 36 }}>{form.avatar}</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: T.text }}>{form.name || "이름 입력 전"}</div>
+              <div style={{ fontSize: 11, color: T.textMid }}>{form.grade}</div>
+            </div>
+          </div>
+
+          {/* 이름 */}
+          <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 6 }}>학생 이름 *</div>
+          <Input
+            value={form.name}
+            onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setFormErr(""); }}
+            placeholder="예: 김민준"
+            style={{ marginBottom: 12 }}
+          />
+
+          {/* 학년 */}
+          <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 6 }}>학년</div>
+          <select
+            value={form.grade}
+            onChange={e => setForm(f => ({ ...f, grade: e.target.value }))}
+            style={{
+              width: "100%", padding: "10px 12px", borderRadius: 10,
+              border: `1.5px solid ${T.border}`, fontSize: 14, marginBottom: 12,
+              boxSizing: "border-box"
+            }}
+          >
+            {["유치원","초등1","초등2","초등3","초등4","초등5","초등6","중1","중2","중3"].map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+
+          {/* 메모 */}
+          <div style={{ fontSize: 12, fontWeight: 800, color: T.text, marginBottom: 6 }}>메모 (선택)</div>
+          <textarea
+            value={form.memo}
+            onChange={e => setForm(f => ({ ...f, memo: e.target.value }))}
+            placeholder="특이사항, 학습 목표 등 자유롭게 적어주세요"
+            rows={3}
+            style={{
+              width: "100%", padding: "10px 12px", borderRadius: 10,
+              border: `1.5px solid ${T.border}`, fontSize: 13, resize: "vertical",
+              boxSizing: "border-box", fontFamily: "inherit"
+            }}
+          />
+
+          {formErr && (
+            <div style={{ color: T.red, fontSize: 12, fontWeight: 700, marginTop: 8 }}>⚠️ {formErr}</div>
+          )}
+        </Card>
+
+        <Btn v="primary" size="lg" onClick={isEdit ? saveEdit : saveAdd} style={{ width: "100%" }}>
+          {isEdit ? "✅ 수정 완료" : "✅ 학생 추가"}
+        </Btn>
+        {isEdit && (
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <Btn v="secondary" size="md" onClick={() => resetRecords(editTarget)} style={{ flex: 1 }}>
+              🔄 학습기록 초기화
+            </Btn>
+            <Btn v="danger" size="md" onClick={() => { deleteStudent(editTarget); setMode("list"); }} style={{ flex: 1 }}>
+              🗑️ 학생 삭제
+            </Btn>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── 학생 목록 ──
+  return (
+    <div>
+      {/* 헤더 */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: T.text }}>👤 학생 관리</div>
+          <div style={{ fontSize: 11, color: T.textMid, marginTop: 2 }}>총 {studentList.length}명 등록됨</div>
+        </div>
+        <Btn v="primary" size="md" onClick={openAdd}>+ 학생 추가</Btn>
+      </div>
+
+      {/* 검색 */}
+      <input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="🔍 이름으로 검색"
+        style={{
+          width: "100%", boxSizing: "border-box", padding: "10px 12px",
+          borderRadius: 11, border: `1.5px solid ${T.border}`,
+          fontSize: 13, marginBottom: 10, outline: "none"
+        }}
+      />
+
+      {/* 정렬 */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+        {[
+          { id: "name", label: "이름순" },
+          { id: "grade", label: "학년순" },
+          { id: "points", label: "포인트순" },
+          { id: "recent", label: "최근활동순" },
+        ].map(s => (
+          <button key={s.id} onClick={() => setSortBy(s.id)} style={{
+            padding: "5px 11px", borderRadius: 8, border: "none", fontSize: 11,
+            fontWeight: 800, cursor: "pointer",
+            background: sortBy === s.id ? T.accent : T.accentLight,
+            color: sortBy === s.id ? "white" : T.accent,
+          }}>{s.label}</button>
+        ))}
+      </div>
+
+      {/* 목록 */}
+      {filtered.length === 0 ? (
+        <Card style={{ padding: 48, textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>👤</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 6 }}>
+            {studentList.length === 0 ? "등록된 학생이 없어요" : "검색 결과가 없어요"}
+          </div>
+          <div style={{ fontSize: 12, color: T.textMid, marginBottom: 16 }}>
+            {studentList.length === 0
+              ? "+ 학생 추가 버튼으로 직접 등록하거나\n학생이 학생 모드로 로그인하면 자동 등록됩니다"
+              : "다른 이름으로 검색해보세요"}
+          </div>
+          {studentList.length === 0 && (
+            <Btn v="primary" size="lg" onClick={openAdd}>+ 첫 번째 학생 추가하기</Btn>
+          )}
+        </Card>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtered.map(s => {
+            const stats = computeStudentStats(s);
+            const lvl = LEVEL_INFO[stats.level];
+            const lastDate = s.records?.slice(-1)[0]?.date?.slice(0, 10);
+            const today = new Date().toISOString().slice(0, 10);
+            const lastActive = !lastDate ? "기록없음"
+              : lastDate === today ? "오늘"
+              : (() => {
+                  const diff = Math.floor((new Date(today) - new Date(lastDate)) / 86400000);
+                  return diff === 1 ? "어제" : `${diff}일 전`;
+                })();
+
+            return (
+              <Card key={s.name} style={{ padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {/* 아바타 */}
+                  <div style={{
+                    width: 50, height: 50, borderRadius: 14, background: lvl.bg, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28
+                  }}>{s.avatar || "🧑"}</div>
+
+                  {/* 정보 */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 15, fontWeight: 900, color: T.text }}>{s.name}</span>
+                      <Tag color="blue">{s.grade || "학년 미정"}</Tag>
+                      <Tag color={stats.level === "A" ? "green" : stats.level === "B" ? "blue" : "orange"}>
+                        {lvl.icon} {lvl.label}
+                      </Tag>
+                      {lastActive === "오늘" && <Tag color="green">● 활동중</Tag>}
+                    </div>
+                    <div style={{ fontSize: 11, color: T.textMid }}>
+                      ⭐ {s.points || 0}p · 📝 {stats.totalAssign}과제 · 🎮 {stats.totalGames}게임 · {lastActive}
+                    </div>
+                    {s.memo && (
+                      <div style={{ fontSize: 11, color: T.textDim, marginTop: 3, fontStyle: "italic" }}>
+                        📌 {s.memo}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 편집 버튼 */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                    <Btn v="secondary" size="sm" onClick={() => openEdit(s)}>✏️ 수정</Btn>
+                    <Btn v="danger" size="sm" onClick={() => deleteStudent(s.name)}>🗑️</Btn>
+                  </div>
+                </div>
+
+                {/* 진도바 */}
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: T.textMid, marginBottom: 3 }}>
+                    <span>정답률</span>
+                    <span style={{ fontWeight: 800, color: stats.accuracy >= 80 ? T.green : stats.accuracy >= 60 ? T.yellow : T.red }}>
+                      {stats.accuracy}%
+                    </span>
+                  </div>
+                  <div style={{ height: 5, background: T.border, borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 3, transition: "width 0.5s",
+                      width: `${stats.accuracy}%`,
+                      background: stats.accuracy >= 80 ? T.green : stats.accuracy >= 60 ? T.yellow : T.red
+                    }} />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 전체 삭제 경고 영역 */}
+      {studentList.length > 0 && (
+        <div style={{ marginTop: 20, padding: 14, background: T.redLight, borderRadius: 12, border: `1px dashed ${T.red}` }}>
+          <div style={{ fontSize: 12, color: T.red, fontWeight: 700, marginBottom: 6 }}>⚠️ 전체 초기화</div>
+          <div style={{ fontSize: 11, color: T.textMid, marginBottom: 10 }}>
+            모든 학생 데이터와 학습 기록을 삭제합니다. 이 작업은 되돌릴 수 없어요.
+          </div>
+          <Btn v="danger" size="sm" onClick={() => {
+            if (confirm("정말로 모든 학생 데이터를 삭제하시겠어요?\n이 작업은 되돌릴 수 없습니다.")) {
+              setStudents({});
+            }
+          }}>🗑️ 전체 학생 삭제</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TeacherHome({ bank, exams, students, onNav }) {
   const studentCount = Object.keys(students || {}).length;
@@ -1773,7 +2118,7 @@ function AssignmentManager({ students, bank, assignments, setAssignments }) {
 }
 
 
-function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, savedPw, setSavedPw }) {
+function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStudents, savedPw, setSavedPw }) {
   const [screen, setScreen] = useState("dashboard");
   const [viewExamId, setViewExamId] = useState(null);
   const [assignments, setAssignments] = useStorage("angela_assignments", []);
@@ -1801,6 +2146,7 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, savedP
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "16px 12px" }}>
         {screen === "dashboard" && <TeacherHome bank={bank} exams={exams} students={students} onNav={onNav} />}
+        {screen === "manage" && <StudentManager students={students} setStudents={setStudents} />}
         {screen === "assign" && <AssignmentManager students={students} bank={bank} assignments={assignments} setAssignments={setAssignments} />}
         {screen === "students" && <StatsDashboard students={students} />}
         {screen === "bank" && <QuestionBank bank={bank} setBank={setBank} />}
@@ -2493,7 +2839,7 @@ export default function App() {
     onLogout={() => setMode("landing")}
     bank={bank} setBank={setBank}
     exams={exams} setExams={setExams}
-    students={students}
+    students={students} setStudents={setStudents}
     savedPw={savedPw} setSavedPw={setSavedPw}
   />;
   if (mode === "student") return <StudentHome
