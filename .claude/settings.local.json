@@ -3,7 +3,36 @@
     "allow": [
       "Bash(npx --no-install eslint src/app/games.js --no-eslintrc --parser-options=ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} --rule '{}')",
       "PowerShell(npm run *)",
-      "PowerShell(Get-Command *)"
+      "PowerShell(Get-Command *)",
+      "Bash(npm --version)",
+      "PowerShell(npm *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Write-Output \"Arch: $env:PROCESSOR_ARCHITECTURE\"; Write-Output \"OS: $\\([Environment]::Is64BitOperatingSystem\\)\"; try { $r = Invoke-WebRequest -Uri \"https://nodejs.org/dist/index.json\" -UseBasicParsing -TimeoutSec 30; $data = $r.Content | ConvertFrom-Json; $lts = $data | Where-Object { $_.lts } | Select-Object -First 1; Write-Output \"Latest LTS: $\\($lts.version\\) \\($\\($lts.lts\\)\\)\" } catch { Write-Output \"DOWNLOAD ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Get-Item *)",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\gen_units.cjs\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\validate_units.cjs\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\gen_units.cjs\"; if \\($?\\) { node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\validate_units.cjs\" })",
+      "Bash(git checkout *)",
+      "Bash(grep -n 'is ______ than \\\\${B}' gen_units.cjs)",
+      "Bash(perl -0pi -e 's/\\\\Q`${A} is ______ than ${B}.`\\\\E/`\\\\${A} is ______ than \\\\${low\\(B\\)}.`/g' gen_units.cjs)",
+      "Bash(sed -n '1,1p')",
+      "Bash(sed -n '/  comp: {/,/^  },/p' src/app/questionData.js)",
+      "Bash(awk 'NR>=15641 && NR<=19550 {print}' src/app/questionData.js)",
+      "Bash(awk 'NR>=15641 && NR<=39088' src/app/questionData.js)",
+      "Bash(ls package-lock.json)",
+      "Bash(ls -d node_modules)",
+      "PowerShell(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git config *)",
+      "PowerShell(Get-Process *)",
+      "Bash(git fetch *)",
+      "Bash(git ls-remote *)",
+      "Bash(echo \"remote main: $\\(git ls-remote origin -h refs/heads/main)",
+      "Bash(export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never)",
+      "Bash(echo \"[exit:$?]\")"
     ]
   }
 }
