@@ -322,12 +322,17 @@ function TeacherLogin({ savedPw, onSuccess, onBack }) {
   );
 }
 
-function StudentLogin({ onSuccess, onBack }) {
-  const [name, setName] = useState("");
+function StudentLogin({ onSuccess, onBack, students }) {
+  const [search, setSearch] = useState("");
+  const studentList = Object.values(students || {});
+  const hasStudents = studentList.length > 0;
 
-  const submit = () => {
-    if (name.trim().length >= 2) onSuccess(name.trim());
-  };
+  // 학생이 많을 때만 검색창 표시
+  const showSearch = studentList.length > 8;
+
+  const filtered = showSearch && search.trim()
+    ? studentList.filter(s => s.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : studentList;
 
   return (
     <div style={{
@@ -335,22 +340,61 @@ function StudentLogin({ onSuccess, onBack }) {
       background: `linear-gradient(135deg, ${T.pink} 0%, ${T.accent} 100%)`,
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20
     }}>
-      <Card style={{ maxWidth: 380, width: "100%", padding: 28 }}>
-        <div style={{ textAlign: "center", marginBottom: 22 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>✨</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: T.text }}>이름을 알려주세요</div>
-          <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>오늘도 영어 공부 화이팅!</div>
+      <Card style={{ maxWidth: 520, width: "100%", padding: 24 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 48, marginBottom: 6 }}>✨</div>
+          <div style={{ fontSize: 19, fontWeight: 900, color: T.text }}>내 이름을 골라주세요</div>
+          <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>
+            {hasStudents ? "오늘도 영어 공부 화이팅!" : "아직 등록된 학생이 없어요"}
+          </div>
         </div>
-        <Input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="예: Shine"
-          style={{ marginBottom: 12, fontSize: 16, textAlign: "center" }}
-        />
-        <Btn v="primary" size="lg" onClick={submit} disabled={name.trim().length < 2} style={{ width: "100%" }}>
-          입장하기 →
-        </Btn>
-        <Btn v="ghost" size="md" onClick={onBack} style={{ width: "100%", marginTop: 8 }}>← 처음으로</Btn>
+
+        {/* 학생이 많으면 검색 표시 */}
+        {showSearch && (
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="🔍 이름으로 찾기"
+            style={{ marginBottom: 12, fontSize: 13 }}
+          />
+        )}
+
+        {/* 등록된 학생 카드 목록 */}
+        {hasStudents ? (
+          <div style={{
+            maxHeight: 380, overflowY: "auto", marginBottom: 16, padding: 2,
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10
+          }}>
+            {filtered.length === 0 ? (
+              <div style={{ gridColumn: "1/-1", padding: 24, textAlign: "center", color: T.textDim, fontSize: 12 }}>
+                검색 결과가 없어요
+              </div>
+            ) : filtered.map(s => (
+              <button key={s.name} onClick={() => onSuccess(s.name)}
+                style={{
+                  background: T.card, border: `2px solid ${T.border}`,
+                  borderRadius: 14, padding: "14px 8px", cursor: "pointer",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                  transition: "all 0.12s"
+                }}
+                onMouseOver={e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.background = T.accentLight; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseOut={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.background = T.card; e.currentTarget.style.transform = "none"; }}>
+                <div style={{ fontSize: 36 }}>{s.avatar || "🙂"}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: T.text, textAlign: "center", lineHeight: 1.2 }}>{s.name}</div>
+                {s.grade && <div style={{ fontSize: 10, color: T.textDim, fontWeight: 700 }}>{s.grade}</div>}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            background: T.yellowLight, color: T.text, fontSize: 12,
+            padding: 18, borderRadius: 10, marginBottom: 14, textAlign: "center", lineHeight: 1.6
+          }}>
+            💡 선생님께서 [학생 관리]에서<br/>먼저 등록해주셔야 입장할 수 있어요.
+          </div>
+        )}
+
+        <Btn v="ghost" size="md" onClick={onBack} style={{ width: "100%" }}>← 처음으로</Btn>
       </Card>
     </div>
   );
@@ -904,7 +948,7 @@ function StudentManager({ students, setStudents }) {
           </div>
           <div style={{ fontSize: 12, color: T.textMid, marginBottom: 16 }}>
             {studentList.length === 0
-              ? "+ 학생 추가 버튼으로 직접 등록하거나\n학생이 학생 모드로 로그인하면 자동 등록됩니다"
+              ? "위 [+ 학생 추가] 버튼으로 학생을 등록해주세요.\n등록된 학생만 학생 모드로 입장 가능합니다."
               : "다른 이름으로 검색해보세요"}
           </div>
           {studentList.length === 0 && (
@@ -1535,7 +1579,7 @@ function AssignmentManager({ students, bank, assignments, setAssignments }) {
         <Card style={{ padding: 40, textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>👥</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>아직 학생이 없어요</div>
-          <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>학생이 학생 모드로 로그인하면 자동으로 등록됩니다</div>
+          <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>[학생 관리]에서 먼저 학생을 등록해주세요</div>
         </Card>
       ) : filtered.length === 0 ? (
         <Card style={{ padding: 28, textAlign: "center" }}>
@@ -2691,27 +2735,18 @@ export default function App() {
 
   // 학생 첫 입장 시 등록
   const enterAsStudent = (name) => {
-    setStudents(prev => {
-      if (prev[name]) return prev;
-      return {
-        ...prev,
-        [name]: {
-          name,
-          joinDate: new Date().toISOString().slice(0, 10),
-          avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
-          grade: "초등5",
-          points: 0,
-          records: []
-        }
-      };
-    });
+    // 등록된 학생만 입장 가능 (StudentLogin에서 이미 검증되었지만 안전장치)
+    if (!students[name]) {
+      alert("등록되지 않은 학생입니다. 선생님께 문의해주세요.");
+      return;
+    }
     setStudentName(name);
     setMode("student");
   };
 
   if (mode === "landing") return <Landing onTeacher={() => setMode("teacher-login")} onStudent={() => setMode("student-login")} />;
   if (mode === "teacher-login") return <TeacherLogin savedPw={savedPw} onSuccess={() => setMode("teacher")} onBack={() => setMode("landing")} />;
-  if (mode === "student-login") return <StudentLogin onSuccess={enterAsStudent} onBack={() => setMode("landing")} />;
+  if (mode === "student-login") return <StudentLogin onSuccess={enterAsStudent} onBack={() => setMode("landing")} students={students} />;
   if (mode === "teacher") return <TeacherApp
     onLogout={() => setMode("landing")}
     bank={bank} setBank={setBank}
