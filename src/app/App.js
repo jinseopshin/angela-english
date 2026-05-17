@@ -146,7 +146,7 @@ function useStorage(key, initial) {
     try { window.localStorage.setItem(key, JSON.stringify(val)); } catch {}
   }, [key, val, hydrated]);
 
-  return [val, setVal];
+  return [val, setVal, hydrated];
 }
 
 // 학생 기록 저장 헬퍼
@@ -3190,7 +3190,7 @@ function StudentQuiz({ name, setStudents, qset, onExit }) {
 export default function App() {
   const [mode, setMode] = useState("landing");
   const [studentName, setStudentName] = useState("");
-  const [bank, setBank] = useStorage("angela_bank", INIT_BANK);
+  const [bank, setBank, bankHydrated] = useStorage("angela_bank", INIT_BANK);
   const [exams, setExams] = useStorage("angela_exams", []);
   const [savedPw, setSavedPw] = useStorage("angela_pw", "1111");
   const [students, setStudents] = useStorage("angela_students", {});
@@ -3203,33 +3203,41 @@ export default function App() {
     document.body.style.background = darkMode ? "#0f172a" : "#f0f7ff";
   }, [darkMode]);
 
-  // ── 자동 마이그레이션 ───────────────────────────────────────────────
+  // ── 자동 마이그레이션 (localStorage 복원 완료 후 1회) ────────────────
+  // bankHydrated 가 true 가 되면 = localStorage 의 저장값이 bank 에 반영된 시점.
+  // 그 시점의 실제 저장 데이터를 기준으로 판단해야 하므로 함수형 setBank 사용.
   // 1) 기본 세트가 50문제 미만이면 기본 3세트를 새 데이터로 교체
-  // 2) 코드에 추가된 새 기본 단원이 저장된 bank에 없으면 그것만 병합
+  // 2) 코드에 추가된 새 기본 단원이 저장된 bank 에 없으면 그것만 병합
   //    (사용자가 추가/수정한 세트는 항상 보존)
   useEffect(() => {
-    const needsMigration =
-      (bank.bp && bank.bp.questions && bank.bp.questions.length < 50) ||
-      (bank.vpa && bank.vpa.questions && bank.vpa.questions.length < 50) ||
-      (bank.mod && bank.mod.questions && bank.mod.questions.length < 50);
+    if (!bankHydrated) return;
+    setBank((prev) => {
+      const needsMigration =
+        (prev.bp && prev.bp.questions && prev.bp.questions.length < 50) ||
+        (prev.vpa && prev.vpa.questions && prev.vpa.questions.length < 50) ||
+        (prev.mod && prev.mod.questions && prev.mod.questions.length < 50);
 
-    const missingDefaults = Object.keys(INIT_BANK).filter((k) => !bank[k]);
+      if (needsMigration) {
+        // 사용자가 추가한 다른 세트는 보존, 기본 3세트만 새 데이터로 교체
+        const userSets = {};
+        Object.entries(prev).forEach(([k, v]) => {
+          if (k !== "bp" && k !== "vpa" && k !== "mod") userSets[k] = v;
+        });
+        return { ...INIT_BANK, ...userSets };
+      }
 
-    if (needsMigration) {
-      // 사용자가 추가한 다른 세트는 보존, 기본 3세트만 새 데이터로 교체
-      const userSets = {};
-      Object.entries(bank).forEach(([k, v]) => {
-        if (k !== "bp" && k !== "vpa" && k !== "mod") userSets[k] = v;
-      });
-      setBank({ ...INIT_BANK, ...userSets });
-    } else if (missingDefaults.length > 0) {
-      // 기존 데이터는 그대로 두고, 빠진 기본 단원만 추가
-      const add = {};
-      missingDefaults.forEach((k) => { add[k] = INIT_BANK[k]; });
-      setBank({ ...bank, ...add });
-    }
+      const missingDefaults = Object.keys(INIT_BANK).filter((k) => !prev[k]);
+      if (missingDefaults.length > 0) {
+        // 기존 데이터는 그대로 두고, 빠진 기본 단원만 추가
+        const merged = { ...prev };
+        missingDefaults.forEach((k) => { merged[k] = INIT_BANK[k]; });
+        return merged;
+      }
+
+      return prev; // 변경 없음 → 불필요한 저장/리렌더 방지
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [bankHydrated]);
 
   // 학생 첫 입장 시 등록
   const enterAsStudent = (name) => {
