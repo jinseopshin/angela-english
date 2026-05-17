@@ -3203,12 +3203,17 @@ export default function App() {
     document.body.style.background = darkMode ? "#0f172a" : "#f0f7ff";
   }, [darkMode]);
 
-  // ── 자동 마이그레이션: 기본 세트가 5문제 이하면 900문제로 교체 ─────────
+  // ── 자동 마이그레이션 ───────────────────────────────────────────────
+  // 1) 기본 세트가 50문제 미만이면 기본 3세트를 새 데이터로 교체
+  // 2) 코드에 추가된 새 기본 단원이 저장된 bank에 없으면 그것만 병합
+  //    (사용자가 추가/수정한 세트는 항상 보존)
   useEffect(() => {
     const needsMigration =
       (bank.bp && bank.bp.questions && bank.bp.questions.length < 50) ||
       (bank.vpa && bank.vpa.questions && bank.vpa.questions.length < 50) ||
       (bank.mod && bank.mod.questions && bank.mod.questions.length < 50);
+
+    const missingDefaults = Object.keys(INIT_BANK).filter((k) => !bank[k]);
 
     if (needsMigration) {
       // 사용자가 추가한 다른 세트는 보존, 기본 3세트만 새 데이터로 교체
@@ -3217,6 +3222,11 @@ export default function App() {
         if (k !== "bp" && k !== "vpa" && k !== "mod") userSets[k] = v;
       });
       setBank({ ...INIT_BANK, ...userSets });
+    } else if (missingDefaults.length > 0) {
+      // 기존 데이터는 그대로 두고, 빠진 기본 단원만 추가
+      const add = {};
+      missingDefaults.forEach((k) => { add[k] = INIT_BANK[k]; });
+      setBank({ ...bank, ...add });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
