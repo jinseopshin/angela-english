@@ -32,7 +32,21 @@
       "Bash(git ls-remote *)",
       "Bash(echo \"remote main: $\\(git ls-remote origin -h refs/heads/main)",
       "Bash(export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never)",
-      "Bash(echo \"[exit:$?]\")"
+      "Bash(echo \"[exit:$?]\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\audit.cjs\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\audit2.cjs\")",
+      "Bash(sed -n '3922,3950p' src/app/questionData.js)",
+      "Bash(sed -n '7830,7858p' src/app/questionData.js)",
+      "Bash(awk 'NR>=3917 && NR<=7824' src/app/questionData.js)",
+      "Bash(awk 'NR>=7825 && NR<=11732' src/app/questionData.js)",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\rebuild_questions.cjs\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\rebuild_questions.cjs\" 2>&1; if \\(-not $?\\) { node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\rebuild_questions.cjs\" })",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\verify_q.cjs\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\rebuild_questions.cjs\"; if \\($?\\) { node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\verify_q.cjs\" })",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\rebuild_questions.cjs\"; if \\($?\\) { node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\verify_q.cjs\" | Select-Object -First 18 })",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\rebuild_words.cjs\")",
+      "PowerShell($env:PATH = \"C:\\\\Users\\\\jsshin\\\\nodejs-portable\\\\node-v24.15.0-win-x64;$env:PATH\"; node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\verify_w.cjs\"; if \\($?\\) { node \"C:\\\\Users\\\\jsshin\\\\OneDrive\\\\문서\\\\GitHub\\\\shin-english\\\\verify_q.cjs\" | Select-Object -First 15 })",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }
