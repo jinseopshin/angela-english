@@ -34,6 +34,7 @@ import {
   PictureWordGame, WordMatchLines, WordSearchGame, DictationGame
 } from "./games";
 import { AIQuestionGenerator } from "./aiQuestions";
+import { SupabaseMigration } from "./SupabaseMigration";
 
 // ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
 function speak(text) {
@@ -1567,6 +1568,9 @@ function TeacherSettings({ savedPw, setSavedPw, darkMode, setDarkMode }) {
           }} />
         </button>
       </Card>
+
+{/* Supabase 마이그레이션 */}
+      <SupabaseMigration />
 
       {/* 데이터 백업 / 복원 — 가장 중요! */}
       <Card style={{ marginBottom: 12, padding: 16, background: T.greenLight, border: `2px solid ${T.green}` }}>
