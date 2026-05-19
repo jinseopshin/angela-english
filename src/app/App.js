@@ -3261,11 +3261,7 @@ function StudentHome({ name, bank, setStudents, students, onLogout, darkMode, se
           {/* 학생 목표 위젯 (있을 때만) */}
           <StudentGoalWidget studentName={name} goals={goals} />
         </div>
- 
-          {/* 학생 목표 위젯 (있을 때만) */}
-          <StudentGoalWidget studentName={name} goals={goals} />
-        </div>
- 
+  
         {/* ════════════════════════════════════════════════ */}
         {/*  📚 자유 풀기 (접힘 / 펼침)  */}
         {/* ════════════════════════════════════════════════ */}
