@@ -373,7 +373,7 @@ function TeacherLogin({ savedPw, onSuccess, onBack }) {
 
 function StudentLogin({ onSuccess, onBack, students }) {
   const [search, setSearch] = useState("");
-  const studentList = Object.values(students || {});
+  const studentList = Object.values(students || {}).filter(s => s.active !== false);
   const hasStudents = studentList.length > 0;
 
   // 학생이 많을 때만 검색창 표시
@@ -766,7 +766,7 @@ function StudentManager({ students, setStudents }) {
   const [csvPreview, setCsvPreview] = useState([]);
   const [csvMsg, setCsvMsg] = useState("");
 
-  const studentList = Object.values(students || {});
+  const studentList = Object.values(students || {}).filter(s => s.active !== false);
 
   // ── CSV 파일 업로드 ─────────────────────────────────────────
   const handleCsvFile = (e) => {
