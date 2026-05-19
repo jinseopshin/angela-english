@@ -3265,9 +3265,6 @@ function StudentHome({ name, bank, setStudents, students, onLogout, darkMode, se
   const [newBadges, setNewBadges] = useState([]);
   const [tab, setTab] = useState("game"); // game | badge
   const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [pinChangeStep, setPinChangeStep] = useState("current"); // "current" | "new" | "confirm"
-  const [pinChangeInput, setPinChangeInput] = useState({ current: "", new: "", confirm: "", error: "", success: false });
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [pinChangeStep, setPinChangeStep] = useState("new"); // "new" | "confirm" | "done"
   const [pinChangeData, setPinChangeData] = useState({ newPin: "", confirmPin: "", error: "" });
   const [reviewCount, setReviewCount] = useState(0);
