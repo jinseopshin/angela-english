@@ -2327,6 +2327,7 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
   const [wrongWord, setWrongWord] = useState(null);
   const [isFav, setIsFav] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const awardedRef = useRef(false);
 
   const questions = useMemo(() => {
     if (!mode) return [];
@@ -2374,6 +2375,20 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
     setFavLoading(false);
   };
 
+  // ✅ 게임 종료 시 점수 저장 (렌더링 중이 아니라 effect에서 한 번만)
+  useEffect(() => {
+    if (!mode || awardedRef.current) return;
+    if (questions.length === 0 || round < questions.length) return;
+    awardedRef.current = true;
+    saveStudentRecord(setStudents, name, {
+      type: "game", gameType: `단어맞추기(${mode.label})`,
+      score, total: questions.length,
+      category: questions[0]?.cat || "기타",
+      points: score * 10
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, round, questions.length]);
+  
   // ── 방향 선택 화면 ──
   if (!mode) {
     return (
@@ -2412,12 +2427,6 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
 
   // ── 게임 종료 ──
   if (round >= questions.length) {
-    saveStudentRecord(setStudents, name, {
-      type: "game", gameType: `단어맞추기(${mode.label})`,
-      score, total: questions.length,
-      category: questions[0]?.cat || "기타",
-      points: score * 10
-    });
     return (
       <div style={{ minHeight: "100vh", background: T.bg, padding: "60px 20px", textAlign: "center" }}>
         <div style={{ fontSize: 64, marginBottom: 14 }}>{score >= 8 ? "🎉" : score >= 5 ? "👏" : "💪"}</div>
@@ -2431,7 +2440,7 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
           <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>+{score * 10} 포인트 획득!</div>
         </Card>
         <div style={{ display: "flex", gap: 10, maxWidth: 320, margin: "0 auto" }}>
-          <Btn v="secondary" size="lg" onClick={() => { setMode(null); setRound(0); setScore(0); }} style={{ flex: 1 }}>
+          <Btn v="secondary" size="lg" onClick={() => { setMode(null); setRound(0); setScore(0); awardedRef.current = false; }} style={{ flex: 1 }}>
             🔄 다시하기
           </Btn>
           <Btn v="primary" size="lg" onClick={onExit} style={{ flex: 1 }}>홈으로</Btn>
