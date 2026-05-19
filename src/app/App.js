@@ -960,6 +960,33 @@ const filtered = studentList
     }));
   };
 
+  const deactivateStudent = (name) => {
+    if (!confirm(`"${name}" 학생을 비활성화할까요?\n학습 기록은 보존되며, 학생 로그인 화면에서 숨겨집니다.`)) return;
+    setStudents(prev => ({
+      ...prev,
+      [name]: { ...prev[name], active: false, deactivatedAt: new Date().toISOString() }
+    }));
+  };
+
+  const reactivateStudent = (name) => {
+    if (!confirm(`"${name}" 학생을 다시 활성화할까요?`)) return;
+    setStudents(prev => {
+      const old = prev[name] || {};
+      const { deactivatedAt, ...rest } = old;
+      return { ...prev, [name]: { ...rest, active: true } };
+    });
+  };
+
+  const permanentDeleteStudent = (name) => {
+    if (!confirm(`⚠️ "${name}" 학생을 영구 삭제할까요?\n모든 학습 기록이 삭제되며 되돌릴 수 없습니다.`)) return;
+    if (!confirm(`정말로 삭제하시겠어요?\n"${name}"`)) return;
+    setStudents(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+  
   // ── 학생 추가/편집 폼 ──
   // ── CSV 일괄 등록 화면 ────────────────────────────────
   if (mode === "csv") {
@@ -1171,7 +1198,7 @@ const filtered = studentList
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 900, color: T.text }}>👤 학생 관리</div>
-          <div style={{ fontSize: 11, color: T.textMid, marginTop: 2 }}>총 {studentList.length}명 등록됨</div>
+          <div style={{ fontSize: 11, color: T.textMid, marginTop: 2 }}>✅ 활성 {activeCount}명 · 🚫 비활성 {inactiveCount}명</div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button onClick={() => setMode("csv")} title="CSV로 일괄 등록"
@@ -1188,6 +1215,28 @@ const filtered = studentList
         </div>
       </div>
 
+{/* 활성/비활성 탭 */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, background: T.card, padding: 5, borderRadius: 12, boxShadow: T.shadow }}>
+        <button onClick={() => setActiveTab("active")} style={{
+          flex: 1, padding: "10px 8px", borderRadius: 8, border: "none", cursor: "pointer",
+          fontSize: 13, fontWeight: 800,
+          background: activeTab === "active" ? T.accent : "transparent",
+          color: activeTab === "active" ? "white" : T.textMid,
+          transition: "all 0.15s"
+        }}>
+          ✅ 활성 <span style={{ marginLeft: 4, opacity: 0.85 }}>({activeCount})</span>
+        </button>
+        <button onClick={() => setActiveTab("inactive")} style={{
+          flex: 1, padding: "10px 8px", borderRadius: 8, border: "none", cursor: "pointer",
+          fontSize: 13, fontWeight: 800,
+          background: activeTab === "inactive" ? T.textMid : "transparent",
+          color: activeTab === "inactive" ? "white" : T.textMid,
+          transition: "all 0.15s"
+        }}>
+          🚫 비활성 <span style={{ marginLeft: 4, opacity: 0.85 }}>({inactiveCount})</span>
+        </button>
+      </div>
+      
       {/* 검색 */}
       <input
         value={search}
@@ -1222,14 +1271,22 @@ const filtered = studentList
         <Card style={{ padding: 48, textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>👤</div>
           <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 6 }}>
-            {studentList.length === 0 ? "등록된 학생이 없어요" : "검색 결과가 없어요"}
+            {activeTab === "inactive" 
+              ? (inactiveCount === 0 ? "비활성화된 학생이 없어요" : "검색 결과가 없어요")
+              : (activeCount === 0 ? "등록된 학생이 없어요" : "검색 결과가 없어요")}
           </div>
           <div style={{ fontSize: 12, color: T.textMid, marginBottom: 16 }}>
-            {studentList.length === 0
-              ? "위 [+ 학생 추가] 버튼으로 학생을 등록해주세요.\n등록된 학생만 학생 모드로 입장 가능합니다."
-              : "다른 이름으로 검색해보세요"}
+{activeTab === "inactive"
+              ? "비활성화된 학생은 여기에 표시됩니다.\n학습 기록은 보존되며 언제든 재활성화 가능합니다."
+              : (activeCount === 0
+                  ? "위 [+ 학생 추가] 버튼으로 학생을 등록해주세요.\n등록된 학생만 학생 모드로 입장 가능합니다."
+                  : "다른 이름으로 검색해보세요")}{activeTab === "inactive"
+              ? "비활성화된 학생은 여기에 표시됩니다.\n학습 기록은 보존되며 언제든 재활성화 가능합니다."
+              : (activeCount === 0
+                  ? "위 [+ 학생 추가] 버튼으로 학생을 등록해주세요.\n등록된 학생만 학생 모드로 입장 가능합니다."
+                  : "다른 이름으로 검색해보세요")}
           </div>
-          {studentList.length === 0 && (
+{activeTab === "active" && activeCount === 0 && (
             <Btn v="primary" size="lg" onClick={openAdd}>+ 첫 번째 학생 추가하기</Btn>
           )}
         </Card>
@@ -1276,12 +1333,20 @@ const filtered = studentList
                     )}
                   </div>
 
-                  {/* 편집 버튼 */}
+{/* 액션 버튼 — 탭에 따라 다르게 */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                    <Btn v="secondary" size="sm" onClick={() => openEdit(s)}>✏️ 수정</Btn>
-                    <Btn v="danger" size="sm" onClick={() => deleteStudent(s.name)}>🗑️</Btn>
+                    {activeTab === "active" ? (
+                      <>
+                        <Btn v="secondary" size="sm" onClick={() => openEdit(s)}>✏️ 수정</Btn>
+                        <Btn v="ghost" size="sm" onClick={() => deactivateStudent(s.name)} style={{ color: T.textMid, border: `1px solid ${T.border}` }}>🚫 비활성</Btn>
+                      </>
+                    ) : (
+                      <>
+                        <Btn v="secondary" size="sm" onClick={() => reactivateStudent(s.name)} style={{ background: T.greenLight, color: T.green, borderColor: T.green }}>♻️ 재활성화</Btn>
+                        <Btn v="danger" size="sm" onClick={() => permanentDeleteStudent(s.name)}>🗑️ 완전삭제</Btn>
+                      </>
+                    )}
                   </div>
-                </div>
 
                 {/* 진도바 */}
                 <div style={{ marginTop: 10 }}>
@@ -1305,8 +1370,8 @@ const filtered = studentList
         </div>
       )}
 
-      {/* 전체 삭제 경고 영역 */}
-      {studentList.length > 0 && (
+{/* 전체 삭제 경고 영역 — 활성 탭에서만 표시 */}
+      {activeTab === "active" && activeCount > 0 && (
         <div style={{ marginTop: 20, padding: 14, background: T.redLight, borderRadius: 12, border: `1px dashed ${T.red}` }}>
           <div style={{ fontSize: 12, color: T.red, fontWeight: 700, marginBottom: 6 }}>⚠️ 전체 초기화</div>
           <div style={{ fontSize: 11, color: T.textMid, marginBottom: 10 }}>
