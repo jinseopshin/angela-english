@@ -370,19 +370,176 @@ function TeacherLogin({ savedPw, onSuccess, onBack }) {
     </div>
   );
 }
-
 function StudentLogin({ onSuccess, onBack, students }) {
   const [search, setSearch] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState(null); // PIN 입력 대상
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState("");
+ 
   const studentList = Object.values(students || {}).filter(s => s.active !== false);
   const hasStudents = studentList.length > 0;
-
   // 학생이 많을 때만 검색창 표시
   const showSearch = studentList.length > 8;
-
   const filtered = showSearch && search.trim()
     ? studentList.filter(s => s.name.toLowerCase().includes(search.trim().toLowerCase()))
     : studentList;
-
+ 
+  // 학생 카드 클릭 → PIN 입력 모드로
+  const handleStudentClick = (s) => {
+    setSelectedStudent(s);
+    setPinInput("");
+    setPinError("");
+  };
+ 
+  // PIN 입력 자릿수 변경
+  const handlePinKey = (digit) => {
+    if (pinInput.length >= 4) return;
+    const newPin = pinInput + digit;
+    setPinInput(newPin);
+    setPinError("");
+    // 4자리 채워지면 자동 검증
+    if (newPin.length === 4) {
+      setTimeout(() => verifyPin(newPin), 100);
+    }
+  };
+ 
+  // 한 자리 지우기
+  const handlePinBack = () => {
+    setPinInput(p => p.slice(0, -1));
+    setPinError("");
+  };
+ 
+  // PIN 검증
+  const verifyPin = (pin) => {
+    const correctPin = selectedStudent.password || "0000"; // 기본값 0000
+    if (pin === correctPin) {
+      // 일치 → 로그인
+      onSuccess(selectedStudent.name);
+    } else {
+      setPinError("비밀번호가 달라요!");
+      setPinInput("");
+      // 진동 효과 (모바일)
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+    }
+  };
+ 
+  // PIN 입력 화면 취소 → 학생 선택으로 복귀
+  const cancelPin = () => {
+    setSelectedStudent(null);
+    setPinInput("");
+    setPinError("");
+  };
+ 
+  // ── PIN 입력 화면 ──────────────────────────────────────────────────
+  if (selectedStudent) {
+    const isDefaultPin = !selectedStudent.password || selectedStudent.password === "0000";
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: `linear-gradient(135deg, ${T.pink} 0%, ${T.accent} 100%)`,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+      }}>
+        <Card style={{ maxWidth: 380, width: "100%", padding: 24 }}>
+          {/* 학생 정보 */}
+          <div style={{ textAlign: "center", marginBottom: 18 }}>
+            <div style={{ fontSize: 56, marginBottom: 8 }}>{selectedStudent.avatar || "🙂"}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: T.text }}>{selectedStudent.name}</div>
+            <div style={{ fontSize: 12, color: T.textMid, marginTop: 4 }}>
+              🔑 비밀번호 4자리를 입력해주세요
+            </div>
+            {isDefaultPin && (
+              <div style={{
+                marginTop: 10, padding: "6px 10px",
+                background: T.yellowLight, color: T.orange,
+                fontSize: 10, fontWeight: 700, borderRadius: 8,
+                display: "inline-block"
+              }}>
+                💡 처음이라면 0000 을 입력해보세요
+              </div>
+            )}
+          </div>
+ 
+          {/* PIN 표시 (4개 동그라미) */}
+          <div style={{
+            display: "flex", justifyContent: "center", gap: 12,
+            marginBottom: 16
+          }}>
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} style={{
+                width: 18, height: 18, borderRadius: "50%",
+                background: pinInput.length > i ? T.accent : "transparent",
+                border: `2px solid ${pinInput.length > i ? T.accent : T.border}`,
+                transition: "all 0.15s",
+              }} />
+            ))}
+          </div>
+ 
+          {/* 에러 메시지 */}
+          {pinError && (
+            <div style={{
+              textAlign: "center", color: T.red, fontSize: 12, fontWeight: 700,
+              marginBottom: 12, animation: "shake 0.3s"
+            }}>
+              ⚠️ {pinError}
+            </div>
+          )}
+ 
+          {/* 숫자 키패드 */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 8, marginBottom: 14
+          }}>
+            {["1","2","3","4","5","6","7","8","9"].map(d => (
+              <button key={d} onClick={() => handlePinKey(d)}
+                style={{
+                  padding: "16px 0", borderRadius: 12,
+                  background: T.bg, border: `1.5px solid ${T.border}`,
+                  fontSize: 22, fontWeight: 800, color: T.text,
+                  cursor: "pointer", transition: "all 0.1s"
+                }}
+                onMouseDown={e => { e.currentTarget.style.background = T.accentLight; e.currentTarget.style.transform = "scale(0.95)"; }}
+                onMouseUp={e => { e.currentTarget.style.background = T.bg; e.currentTarget.style.transform = "scale(1)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = T.bg; e.currentTarget.style.transform = "scale(1)"; }}
+                onTouchStart={e => { e.currentTarget.style.background = T.accentLight; }}
+                onTouchEnd={e => { e.currentTarget.style.background = T.bg; }}
+              >{d}</button>
+            ))}
+            <button onClick={handlePinBack}
+              style={{
+                padding: "16px 0", borderRadius: 12,
+                background: T.bg, border: `1.5px solid ${T.border}`,
+                fontSize: 18, fontWeight: 800, color: T.textMid,
+                cursor: "pointer"
+              }}>←</button>
+            <button onClick={() => handlePinKey("0")}
+              style={{
+                padding: "16px 0", borderRadius: 12,
+                background: T.bg, border: `1.5px solid ${T.border}`,
+                fontSize: 22, fontWeight: 800, color: T.text,
+                cursor: "pointer"
+              }}>0</button>
+            <button onClick={() => { setPinInput(""); setPinError(""); }}
+              style={{
+                padding: "16px 0", borderRadius: 12,
+                background: T.bg, border: `1.5px solid ${T.border}`,
+                fontSize: 11, fontWeight: 800, color: T.textMid,
+                cursor: "pointer"
+              }}>지우기</button>
+          </div>
+ 
+          {/* 뒤로 가기 */}
+          <Btn v="ghost" size="md" onClick={cancelPin} style={{ width: "100%" }}>
+            ← 다른 학생 선택
+          </Btn>
+        </Card>
+      </div>
+    );
+  }
+ 
+  // ── 학생 선택 화면 (기존과 동일하지만 클릭 핸들러만 변경) ─────────
   return (
     <div style={{
       minHeight: "100vh",
@@ -397,7 +554,6 @@ function StudentLogin({ onSuccess, onBack, students }) {
             {hasStudents ? "오늘도 영어 공부 화이팅!" : "아직 등록된 학생이 없어요"}
           </div>
         </div>
-
         {/* 학생이 많으면 검색 표시 */}
         {showSearch && (
           <Input
@@ -407,7 +563,6 @@ function StudentLogin({ onSuccess, onBack, students }) {
             style={{ marginBottom: 12, fontSize: 13 }}
           />
         )}
-
         {/* 등록된 학생 카드 목록 */}
         {hasStudents ? (
           <div style={{
@@ -419,7 +574,7 @@ function StudentLogin({ onSuccess, onBack, students }) {
                 검색 결과가 없어요
               </div>
             ) : filtered.map(s => (
-              <button key={s.name} onClick={() => onSuccess(s.name)}
+              <button key={s.name} onClick={() => handleStudentClick(s)}
                 style={{
                   background: T.card, border: `2px solid ${T.border}`,
                   borderRadius: 14, padding: "14px 8px", cursor: "pointer",
@@ -442,12 +597,12 @@ function StudentLogin({ onSuccess, onBack, students }) {
             💡 선생님께서 [학생 관리]에서<br/>먼저 등록해주셔야 입장할 수 있어요.
           </div>
         )}
-
         <Btn v="ghost" size="md" onClick={onBack} style={{ width: "100%" }}>← 처음으로</Btn>
       </Card>
     </div>
   );
 }
+ 
 
 // ══════════════════════════════════════════════════════════════════════════
 //   학생 진도 & 통계 대시보드 (선생님용)
