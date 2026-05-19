@@ -97,9 +97,19 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
   const awardedRef = useRef(false);
   const recordingStartTimeRef = useRef(0);
 
-  const words = level
-    ? shuffle(level === "all" ? ALL_WORDS : getWordsByLevel(level)).slice(0, 10)
-    : [];
+  const [words, setWords] = useState([]);
+
+  // 레벨 선택되면 단어 10개 한 번만 생성 (매 렌더마다 새로 섞이지 않게)
+  useEffect(() => {
+    if (!level) {
+      setWords([]);
+      return;
+    }
+    const pool = level === "all" ? ALL_WORDS : getWordsByLevel(level);
+    const picked = shuffle(pool).slice(0, 10);
+    setWords(picked);
+    console.log(`[Pronunciation] 단어 ${picked.length}개 준비됨`);
+  }, [level]);
 
   // 브라우저 지원 체크
   useEffect(() => {
