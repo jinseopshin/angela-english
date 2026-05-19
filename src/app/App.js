@@ -3009,7 +3009,16 @@ function StudentHome({ name, bank, setStudents, students, onLogout, darkMode, se
   const [reviewWords, setReviewWords] = useState(null); // 복습 모드용 단어 목록
   const [newBadges, setNewBadges] = useState([]);
   const [tab, setTab] = useState("game"); // game | badge
-
+  const [showFreeQuiz, setShowFreeQuiz] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem("angela_free_quiz_open_" + name) === "true"; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try { window.localStorage.setItem("angela_free_quiz_open_" + name, String(showFreeQuiz)); } catch {}
+  }, [showFreeQuiz, name]);
+  
   const me = students[name] || {};
   const points = me.points || 0;
 
@@ -3178,23 +3187,69 @@ function StudentHome({ name, bank, setStudents, students, onLogout, darkMode, se
                 </>
               )}
 
-              {otherSets.length > 0 && (
-                <>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: T.textMid, marginBottom: 8, letterSpacing: 0.5 }}>📚 자유 풀기</div>
-                  <div style={{ marginBottom: 18 }}>
-                    {otherSets.map(s => (
-                      <Card key={s.id} onClick={() => { setQuizSet(s); setScreen("quiz"); }} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 42, height: 42, background: T.pinkLight, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>📝</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{s.title}</div>
-                          <div style={{ fontSize: 11, color: T.textMid }}>{s.grade} · {s.questions.length}문항</div>
-                        </div>
-                        <div style={{ fontSize: 18, color: T.textDim }}>›</div>
-                      </Card>
-                    ))}
-                  </div>
-                </>
-              )}
+           {otherSets.length > 0 && (
+  <div style={{ marginBottom: 18 }}>
+    {/* 접기/펼치기 헤더 */}
+    <button
+      onClick={() => setShowFreeQuiz(s => !s)}
+      style={{
+        width: "100%",
+        background: T.card,
+        border: `1px solid ${T.border}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: showFreeQuiz ? 8 : 0,
+        transition: "all 0.15s",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 20 }}>📚</span>
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>자유 풀기</div>
+          <div style={{ fontSize: 11, color: T.textMid, marginTop: 2 }}>
+            {otherSets.length}개 문제집 · 원할 때 풀어보세요
+          </div>
+        </div>
+      </div>
+      <div style={{
+        fontSize: 14,
+        color: T.textMid,
+        fontWeight: 800,
+        transition: "transform 0.2s",
+        transform: showFreeQuiz ? "rotate(180deg)" : "rotate(0deg)",
+      }}>
+        ▼
+      </div>
+    </button>
+ 
+    {/* 펼쳐졌을 때 목록 표시 */}
+    {showFreeQuiz && (
+      <div>
+        {otherSets.map(s => (
+          <Card
+            key={s.id}
+            onClick={() => { setQuizSet(s); setScreen("quiz"); }}
+            style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}
+          >
+            <div style={{
+              width: 42, height: 42, background: T.pinkLight, borderRadius: 12,
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22
+            }}>📝</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{s.title}</div>
+              <div style={{ fontSize: 11, color: T.textMid }}>{s.grade} · {s.questions.length}문항</div>
+            </div>
+            <div style={{ fontSize: 18, color: T.textDim }}>›</div>
+          </Card>
+        ))}
+      </div>
+    )}
+  </div>
+)}
             </>
           );
         })()}
