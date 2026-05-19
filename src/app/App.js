@@ -1347,7 +1347,7 @@ const filtered = studentList
                       </>
                     )}
                   </div>
-
+                </div>
                 {/* 진도바 */}
                 <div style={{ marginTop: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: T.textMid, marginBottom: 3 }}>
