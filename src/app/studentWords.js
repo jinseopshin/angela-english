@@ -249,6 +249,86 @@ export async function getTodayReviewWords(studentName, limit = 20) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+//  🎤 발음 점수 기록 (Phase 3)
+// ──────────────────────────────────────────────────────────────────────────
+
+// 발음 점수 기록 (단어 한 개에 대해)
+export async function recordPronunciation(studentName, word, score) {
+  if (!studentName || !word?.en || !isSupabaseReady()) return false;
+  
+  try {
+    const { data: existing } = await supabase
+      .from("student_words")
+      .select("*")
+      .eq("student_name", studentName)
+      .eq("word_en", word.en)
+      .maybeSingle();
+    
+    const now = new Date().toISOString();
+    
+    if (existing) {
+      // 기존 평균과 합쳐서 새 평균 계산
+      const oldAvg = existing.pronunciation_avg || 0;
+      const oldCount = existing.pronunciation_count || 0;
+      const newCount = oldCount + 1;
+      const newAvg = Math.round((oldAvg * oldCount + score) / newCount);
+      
+      await supabase.from("student_words").update({
+        pronunciation_avg: newAvg,
+        pronunciation_count: newCount,
+        last_studied_at: now,
+        updated_at: now,
+      }).eq("id", existing.id);
+    } else {
+      // 새 기록 생성
+      await supabase.from("student_words").insert({
+        student_name: studentName,
+        word_en: word.en,
+        word_ko: word.ko,
+        pronunciation_avg: score,
+        pronunciation_count: 1,
+        first_seen_at: now,
+        last_studied_at: now,
+      });
+    }
+    return true;
+  } catch (e) {
+    console.warn(`recordPronunciation 실패:`, e.message);
+    return false;
+  }
+}
+
+// 학생의 평균 발음 점수 가져오기
+export async function getPronunciationStats(studentName) {
+  if (!isSupabaseReady() || !studentName) return null;
+  try {
+    const { data, error } = await supabase
+      .from("student_words")
+      .select("pronunciation_avg, pronunciation_count, word_en, word_ko")
+      .eq("student_name", studentName)
+      .not("pronunciation_avg", "is", null);
+    if (error) throw error;
+    
+    if (!data || data.length === 0) return { avg: 0, count: 0, words: [] };
+    
+    const totalCount = data.reduce((sum, w) => sum + w.pronunciation_count, 0);
+    const weightedSum = data.reduce((sum, w) => sum + w.pronunciation_avg * w.pronunciation_count, 0);
+    const avg = totalCount > 0 ? Math.round(weightedSum / totalCount) : 0;
+    
+    // 점수 낮은 단어 TOP 5 (60점 미만)
+    const weakWords = data
+      .filter(w => w.pronunciation_avg < 60)
+      .sort((a, b) => a.pronunciation_avg - b.pronunciation_avg)
+      .slice(0, 5);
+    
+    return { avg, count: data.length, weakWords };
+  } catch (e) {
+    console.warn(`getPronunciationStats 실패:`, e.message);
+    return null;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 //  📊 학생 학습 통계 (선생님 대시보드용)
 // ──────────────────────────────────────────────────────────────────────────
 
