@@ -44,6 +44,7 @@ import { MyWordbook } from "./MyWordbook";
 import { ReviewCard } from "./ReviewCard";
 import { StudentWordStatsCard } from "./StudentWordStatsCard";
 import { PronunciationGame } from "./PronunciationGame";
+import { PronunciationWidget } from "./PronunciationWidget";
 import { recordWordEncounter } from "./studentWords";
 import { addToWordbook, removeFromWordbook, isInWordbook } from "./studentWords";
 
@@ -3117,6 +3118,9 @@ function StudentHome({ name, bank, setStudents, students, onLogout, darkMode, se
       <ScheduleBanner schedules={schedules} />
 
       <div className="app-container">
+        {/* 🎤 이번 주 발음 위젯 (Phase 3) */}
+        <PronunciationWidget studentName={name} onStart={() => setScreen("game-pronunciation")} />
+
        {/* 🔔 오늘의 복습 (Phase 2: 망각 곡선) */}
         <ReviewCard studentName={name} onStartReview={(words) => {
           setReviewWords(words);
