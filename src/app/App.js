@@ -48,6 +48,8 @@ import { PronunciationWidget } from "./PronunciationWidget";
 import { recordWordEncounter, getTodayReviewWords } from "./studentWords";
 import WordLearningDashboard from "./WordLearningDashboard";
 import { addToWordbook, removeFromWordbook, isInWordbook } from "./studentWords";
+import { onCorrect, onWrong, onFinish, playStart, playClick } from "./soundEffects";
+
 
 // ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
 function speak(text) {
@@ -2658,10 +2660,11 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
   };
 
   // ✅ 게임 종료 시 점수 저장 (렌더링 중이 아니라 effect에서 한 번만)
-  useEffect(() => {
+useEffect(() => {
     if (!mode || awardedRef.current) return;
     if (questions.length === 0 || round < questions.length) return;
     awardedRef.current = true;
+    onFinish(score, questions.length);  // 🎮 종료 사운드 + 꽃가루 (80% 이상)
     saveStudentRecord(setStudents, name, {
       type: "game", gameType: `단어맞추기(${mode.label})`,
       score, total: questions.length,
@@ -2741,10 +2744,12 @@ const pick = (idx) => {
       setScore(score + 1);
       setFeedback("correct");
       setWrongWord(null);
+      onCorrect();  // 🎮 사운드 + 별 효과
       if (levelId === "homework") updateWordMastery(setStudents, name, q.en, true);
     } else {
       setFeedback("wrong");
       setWrongWord(q);
+      onWrong();  // 🎮 사운드 + 화면 흔들기
       if (levelId === "homework") updateWordMastery(setStudents, name, q.en, false);
     }
     setTimeout(() => { setFeedback(null); setWrongWord(null); setRound(round + 1); }, 1000);
