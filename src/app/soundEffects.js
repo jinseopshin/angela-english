@@ -38,7 +38,7 @@ function getAudioCtx() {
 }
 
 // ── 기본 톤 생성 헬퍼 ───────────────────────────────────────────────────
-function playTone(freq, duration = 0.15, type = "sine", volume = 0.3) {
+function playTone(freq, duration = 0.15, type = "sine", volume = 0.3, detune = 0) {
   if (!isSoundEnabled()) return;
   const ctx = getAudioCtx();
   if (!ctx) return;
@@ -49,10 +49,14 @@ function playTone(freq, duration = 0.15, type = "sine", volume = 0.3) {
 
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+    if (detune) oscillator.detune.setValueAtTime(detune, ctx.currentTime);
 
-    // ADSR 엔벨로프 (attack/decay/sustain/release)
+    // ADSR 엔벨로프 — 더 풍부한 잔향
+    const attackTime = 0.005;
+    const releaseTime = duration * 0.7; // 70%는 잔향
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.01);
+    gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + attackTime);
+    gainNode.gain.linearRampToValueAtTime(volume * 0.5, ctx.currentTime + attackTime + 0.05);
     gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
 
     oscillator.connect(gainNode);
@@ -63,6 +67,20 @@ function playTone(freq, duration = 0.15, type = "sine", volume = 0.3) {
   } catch (e) {
     console.warn("playTone 실패:", e);
   }
+}
+
+// 화음 재생 (여러 주파수를 동시에)
+function playChord(freqs, duration = 0.3, type = "sine", volume = 0.2) {
+  if (!isSoundEnabled()) return;
+  freqs.forEach(freq => playTone(freq, duration, type, volume, 0));
+}
+
+// 반짝이는 고음 효과 (정답 시 매력 포인트)
+function playSparkle() {
+  if (!isSoundEnabled()) return;
+  [1568, 2093, 2637].forEach((freq, i) => {
+    setTimeout(() => playTone(freq, 0.08, "sine", 0.12), i * 30);
+  });
 }
 
 // 여러 톤을 시간차로 재생 (멜로디)
@@ -79,45 +97,78 @@ function playMelody(notes) {
 //   사운드 프리셋 — 듀오링고 스타일
 // ══════════════════════════════════════════════════════════════════════════
 
-// 🎵 정답 — 청량한 "딩~딩!" (C → E)
+// 🎵 정답 — 풍부한 화음 + 반짝이는 고음 (C major chord 상승)
 export function playCorrect() {
+  // 1. 첫 음: 짧고 또렷 (C5)
   playMelody([
-    { freq: 523.25, dur: 0.12, type: "sine", vol: 0.25 },  // C5
-    { freq: 659.25, dur: 0.18, type: "sine", vol: 0.3, delay: 90 },  // E5
+    { freq: 523.25, dur: 0.1, type: "triangle", vol: 0.25 },
   ]);
+  // 2. 화음 폭발 (50ms 후): C-E-G 메이저 화음
+  setTimeout(() => {
+    playChord([523.25, 659.25, 783.99], 0.35, "sine", 0.18);
+  }, 80);
+  // 3. 반짝이는 고음 (150ms 후): 별 떨어지는 느낌
+  setTimeout(() => playSparkle(), 150);
+  // 4. 마무리 베이스 (200ms 후): 따뜻한 저음
+  setTimeout(() => {
+    playTone(261.63, 0.25, "sine", 0.15); // C4
+  }, 200);
 }
 
-// 🎵 오답 — 부드러운 "부웅" (낮은 톤)
+// 🎵 오답 — 마림바 같은 "동-동" + 화음 (위로의 느낌)
 export function playWrong() {
+  // 1. 첫 음: 둥근 마림바 톤
   playMelody([
-    { freq: 220, dur: 0.2, type: "triangle", vol: 0.25 },  // A3
-    { freq: 174.61, dur: 0.25, type: "triangle", vol: 0.2, delay: 100 },  // F3
+    { freq: 261.63, dur: 0.15, type: "triangle", vol: 0.22 },  // C4
   ]);
+  // 2. 하강 화음 (마이너): A minor
+  setTimeout(() => {
+    playChord([220, 261.63], 0.3, "triangle", 0.18);  // A3 + C4
+  }, 100);
+  // 3. 따뜻한 마무리
+  setTimeout(() => {
+    playTone(196, 0.4, "sine", 0.15, -5);  // G3, 약간 변조
+  }, 220);
 }
 
-// 🎵 콤보 (3,5,10) — 점점 화려해짐
+// 🎵 콤보 (3,5,10) — 아르페지오 + 화음 + 잔향
 export function playCombo(count) {
   if (count >= 10) {
-    // 10콤보: C-E-G-C (메이저 코드 상승)
+    // 10콤보: 화려한 4옥타브 아르페지오 + 빅 화음
     playMelody([
-      { freq: 523.25, dur: 0.1, type: "sine", vol: 0.25 },
-      { freq: 659.25, dur: 0.1, type: "sine", vol: 0.25, delay: 60 },
-      { freq: 783.99, dur: 0.1, type: "sine", vol: 0.25, delay: 120 },
-      { freq: 1046.5, dur: 0.25, type: "sine", vol: 0.3, delay: 180 },
+      { freq: 523.25, dur: 0.08, type: "triangle", vol: 0.22 },  // C5
+      { freq: 659.25, dur: 0.08, type: "triangle", vol: 0.22, delay: 50 },  // E5
+      { freq: 783.99, dur: 0.08, type: "triangle", vol: 0.22, delay: 100 },  // G5
+      { freq: 1046.5, dur: 0.08, type: "triangle", vol: 0.22, delay: 150 },  // C6
     ]);
+    // 빅 화음 폭발
+    setTimeout(() => {
+      playChord([523.25, 659.25, 783.99, 1046.5], 0.5, "sine", 0.18);
+    }, 200);
+    // 반짝 ×2
+    setTimeout(() => playSparkle(), 250);
+    setTimeout(() => playSparkle(), 400);
   } else if (count >= 5) {
-    // 5콤보: C-E-G
+    // 5콤보: 빠른 아르페지오 + 화음
     playMelody([
-      { freq: 523.25, dur: 0.1, type: "sine", vol: 0.25 },
-      { freq: 659.25, dur: 0.1, type: "sine", vol: 0.25, delay: 70 },
-      { freq: 783.99, dur: 0.18, type: "sine", vol: 0.3, delay: 140 },
+      { freq: 523.25, dur: 0.08, type: "triangle", vol: 0.22 },
+      { freq: 659.25, dur: 0.08, type: "triangle", vol: 0.22, delay: 60 },
+      { freq: 783.99, dur: 0.08, type: "triangle", vol: 0.22, delay: 120 },
     ]);
+    setTimeout(() => {
+      playChord([659.25, 783.99, 987.77], 0.4, "sine", 0.18);
+    }, 160);
+    setTimeout(() => playSparkle(), 200);
   } else if (count >= 3) {
-    // 3콤보: C-E (정답 사운드와 유사하지만 더 길고 화려)
+    // 3콤보: 가벼운 트리오 + 미니 화음
     playMelody([
-      { freq: 587.33, dur: 0.1, type: "sine", vol: 0.25 },  // D5
-      { freq: 783.99, dur: 0.18, type: "sine", vol: 0.3, delay: 80 },  // G5
+      { freq: 587.33, dur: 0.08, type: "triangle", vol: 0.22 },  // D5
+      { freq: 698.46, dur: 0.08, type: "triangle", vol: 0.22, delay: 60 },  // F5
+      { freq: 880, dur: 0.12, type: "triangle", vol: 0.25, delay: 120 },  // A5
     ]);
+    setTimeout(() => {
+      playChord([587.33, 698.46, 880], 0.3, "sine", 0.15);
+    }, 150);
   }
 }
 
@@ -133,25 +184,50 @@ export function playStart() {
 export function playFinish(score, total) {
   const ratio = total > 0 ? score / total : 0;
   if (ratio >= 0.8) {
-    // 우수 (80% 이상): 화려한 팡파레
+    // 우수 (80% 이상): 영화같은 팡파레
+    // Part 1: 멜로디 라인 상승
     playMelody([
-      { freq: 523.25, dur: 0.15, type: "sine", vol: 0.3 },
-      { freq: 659.25, dur: 0.15, type: "sine", vol: 0.3, delay: 130 },
-      { freq: 783.99, dur: 0.15, type: "sine", vol: 0.3, delay: 260 },
-      { freq: 1046.5, dur: 0.35, type: "sine", vol: 0.35, delay: 390 },
+      { freq: 523.25, dur: 0.15, type: "triangle", vol: 0.28 },  // C5
+      { freq: 659.25, dur: 0.15, type: "triangle", vol: 0.28, delay: 130 },  // E5
+      { freq: 783.99, dur: 0.15, type: "triangle", vol: 0.28, delay: 260 },  // G5
     ]);
+    // Part 2: 빅 화음 (500ms 후)
+    setTimeout(() => {
+      playChord([523.25, 659.25, 783.99, 1046.5], 0.6, "sine", 0.2);
+    }, 400);
+    // Part 3: 베이스 라인 (저음 동시에)
+    setTimeout(() => {
+      playTone(130.81, 0.7, "sine", 0.15);  // C3
+      playTone(196, 0.7, "sine", 0.12);  // G3
+    }, 420);
+    // Part 4: 반짝 폭발
+    setTimeout(() => playSparkle(), 500);
+    setTimeout(() => playSparkle(), 700);
+    setTimeout(() => playSparkle(), 900);
+    // Part 5: 마무리 종소리 (1초 후)
+    setTimeout(() => {
+      playChord([1046.5, 1318.5], 0.8, "sine", 0.15);  // C6 + E6
+    }, 1000);
   } else if (ratio >= 0.5) {
-    // 보통 (50~80%): 밝은 마무리
+    // 보통 (50~80%): 밝은 마무리 + 잔향
     playMelody([
-      { freq: 523.25, dur: 0.15, type: "sine", vol: 0.28 },
-      { freq: 659.25, dur: 0.3, type: "sine", vol: 0.3, delay: 130 },
+      { freq: 523.25, dur: 0.15, type: "triangle", vol: 0.25 },
+      { freq: 659.25, dur: 0.15, type: "triangle", vol: 0.25, delay: 130 },
     ]);
+    setTimeout(() => {
+      playChord([523.25, 659.25, 783.99], 0.5, "sine", 0.18);
+    }, 260);
+    setTimeout(() => playSparkle(), 300);
   } else {
-    // 아쉬움 (50% 미만): 따뜻한 위로 톤
+    // 아쉬움 (50% 미만): 따뜻한 위로 + 격려
     playMelody([
-      { freq: 392, dur: 0.2, type: "triangle", vol: 0.25 },
-      { freq: 440, dur: 0.3, type: "triangle", vol: 0.25, delay: 180 },
+      { freq: 392, dur: 0.2, type: "triangle", vol: 0.22 },  // G4
+      { freq: 440, dur: 0.2, type: "triangle", vol: 0.22, delay: 180 },  // A4
+      { freq: 523.25, dur: 0.3, type: "triangle", vol: 0.25, delay: 360 },  // C5 (희망적)
     ]);
+    setTimeout(() => {
+      playChord([392, 523.25], 0.5, "sine", 0.15);
+    }, 480);
   }
 }
 
