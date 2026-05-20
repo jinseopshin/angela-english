@@ -1,26 +1,39 @@
-// app/api/extract-words/route.js
-// 교재 사진을 Claude Vision으로 분석하여 영어 단어와 한글 뜻을 추출
+// src/api/extract-words/route.js
+// ══════════════════════════════════════════════════════════════════════════
+//   Angela's English Academy — 교재 사진에서 영단어 자동 추출 API
+//   Claude Vision으로 이미지를 분석하여 영어 단어와 한글 뜻 페어 추출
+// ══════════════════════════════════════════════════════════════════════════
 
-import Anthropic from "@anthropic-ai/sdk";
+import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
+export async function POST(request) {
+  // 1. API 키 확인
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "API 키가 설정되지 않았습니다. Vercel 환경변수를 확인해주세요." },
+      { status: 500 }
+    );
+  }
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-export async function POST(req) {
+  // 2. 요청 본문 파싱
+  let body;
   try {
-    const { image, mediaType } = await req.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
+  }
 
-    if (!image) {
-      return Response.json({ error: "이미지가 없습니다." }, { status: 400 });
-    }
+  const { image, mediaType } = body;
+  if (!image || typeof image !== "string") {
+    return NextResponse.json({ error: "이미지가 없습니다." }, { status: 400 });
+  }
 
-    const supportedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    const mt = supportedTypes.includes(mediaType) ? mediaType : "image/jpeg";
+  const supportedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  const mt = supportedTypes.includes(mediaType) ? mediaType : "image/jpeg";
 
-    const prompt = `이 이미지는 영어 교재 페이지입니다. 이미지에서 영어 단어와 그에 대응하는 한글 뜻을 모두 추출해주세요.
+  // 3. 프롬프트 구성
+  const prompt = `이 이미지는 영어 교재 페이지입니다. 이미지에서 영어 단어와 그에 대응하는 한글 뜻을 모두 추출해주세요.
 
 추출 규칙:
 1. 영어 단어와 한글 뜻이 명확히 짝지어진 것만 추출
@@ -37,57 +50,78 @@ export async function POST(req) {
   ]
 }`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mt,
-                data: image,
+  // 4. Anthropic Vision API 호출
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4000,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mt,
+                  data: image,
+                },
               },
-            },
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-      ],
+              {
+                type: "text",
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }),
     });
 
-    // 텍스트 응답에서 JSON 추출
-    const text = response.content
-      .filter(c => c.type === "text")
-      .map(c => c.text)
-      .join("");
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Anthropic Vision API error:", res.status, errText);
+      return NextResponse.json(
+        { error: `AI 분석 실패 (${res.status}). 잠시 후 다시 시도해주세요.` },
+        { status: 502 }
+      );
+    }
 
-    // JSON 파싱 (markdown 코드 펜스 제거)
-    const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || "";
 
-    let parsed;
+    // 5. JSON 파싱
+    let parsed = null;
     try {
-      parsed = JSON.parse(cleaned);
-    } catch (e) {
-      // JSON 추출 재시도 — { 부터 } 까지
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
+      const cleaned = raw
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const objMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        parsed = JSON.parse(objMatch[0]);
       } else {
-        throw new Error("AI 응답을 파싱할 수 없습니다");
+        parsed = JSON.parse(cleaned);
       }
+    } catch (parseErr) {
+      console.error("JSON parse error:", parseErr, "raw:", raw);
+      return NextResponse.json(
+        { error: "AI 응답 파싱 실패. 다른 사진으로 다시 시도해주세요." },
+        { status: 500 }
+      );
     }
 
+    // 6. 정규화 + 중복 제거
     if (!parsed.words || !Array.isArray(parsed.words)) {
-      return Response.json({ words: [] });
+      return NextResponse.json({ words: [] });
     }
 
-    // 정규화 + 중복 제거
     const seen = new Set();
     const words = [];
     for (const w of parsed.words) {
@@ -101,10 +135,18 @@ export async function POST(req) {
       });
     }
 
-    return Response.json({ words });
-  } catch (err) {
-    console.error("extract-words 에러:", err);
-    const msg = err?.message || "사진 분석 실패";
-    return Response.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ words });
+
+  } catch (networkErr) {
+    console.error("Network error:", networkErr);
+    return NextResponse.json(
+      { error: "네트워크 오류. 다시 시도해주세요." },
+      { status: 503 }
+    );
   }
+}
+
+// GET 요청은 허용하지 않음
+export async function GET() {
+  return NextResponse.json({ error: "POST 요청만 지원합니다." }, { status: 405 });
 }

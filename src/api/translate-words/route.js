@@ -1,110 +1,119 @@
-// app/api/extract-words/route.js
-// 교재 사진을 Claude Vision으로 분석하여 영어 단어와 한글 뜻을 추출
+// src/api/translate-words/route.js
+// ══════════════════════════════════════════════════════════════════════════
+//   Angela's English Academy — 영어 단어를 한꺼번에 한글로 번역하는 API
+// ══════════════════════════════════════════════════════════════════════════
 
-import Anthropic from "@anthropic-ai/sdk";
+import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
+export async function POST(request) {
+  // 1. API 키 확인
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "API 키가 설정되지 않았습니다. Vercel 환경변수를 확인해주세요." },
+      { status: 500 }
+    );
+  }
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-export async function POST(req) {
+  // 2. 요청 본문 파싱
+  let body;
   try {
-    const { image, mediaType } = await req.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
+  }
 
-    if (!image) {
-      return Response.json({ error: "이미지가 없습니다." }, { status: 400 });
-    }
+  const { words } = body;
+  if (!Array.isArray(words) || words.length === 0) {
+    return NextResponse.json({ error: "번역할 단어가 없습니다." }, { status: 400 });
+  }
+  if (words.length > 100) {
+    return NextResponse.json({ error: "한 번에 최대 100개까지 번역 가능합니다." }, { status: 400 });
+  }
 
-    const supportedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    const mt = supportedTypes.includes(mediaType) ? mediaType : "image/jpeg";
+  const wordList = words.map(w => String(w).trim()).filter(Boolean).slice(0, 100);
 
-    const prompt = `이 이미지는 영어 교재 페이지입니다. 이미지에서 영어 단어와 그에 대응하는 한글 뜻을 모두 추출해주세요.
+  const prompt = `다음 영어 단어들의 한글 뜻을 알려주세요.
+각 단어의 가장 핵심적인 뜻 한 가지만 작성해주세요. 여러 뜻이 중요하면 콤마로 구분(예: "사과, 사과하다").
+중·고등학생이 학습하는 교과서 수준의 뜻을 우선해주세요.
 
-추출 규칙:
-1. 영어 단어와 한글 뜻이 명확히 짝지어진 것만 추출
-2. 영어 단어가 있지만 한글 뜻이 없으면 ko를 빈 문자열로
-3. 문장이나 예문은 제외, 단어/숙어만 추출
-4. 영어 단어는 소문자로 정규화 (단, 고유명사는 그대로)
-5. 한글 뜻은 가장 핵심적인 뜻 한 가지만 (여러 뜻 콤마로 구분 가능)
+단어 목록:
+${wordList.map((w, i) => `${i+1}. ${w}`).join("\n")}
 
 응답은 반드시 다음 JSON 형식으로만 응답하세요. 다른 설명 없이 JSON만:
 {
-  "words": [
+  "translations": [
     {"en": "apple", "ko": "사과"},
     {"en": "banana", "ko": "바나나"}
   ]
 }`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mt,
-                data: image,
-              },
-            },
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-      ],
+  // 3. Anthropic API 호출
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 3000,
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
 
-    // 텍스트 응답에서 JSON 추출
-    const text = response.content
-      .filter(c => c.type === "text")
-      .map(c => c.text)
-      .join("");
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Anthropic API error:", res.status, errText);
+      return NextResponse.json(
+        { error: `AI API 오류 (${res.status}). 잠시 후 다시 시도해주세요.` },
+        { status: 502 }
+      );
+    }
 
-    // JSON 파싱 (markdown 코드 펜스 제거)
-    const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || "";
 
-    let parsed;
+    // 4. JSON 파싱
+    let parsed = null;
     try {
-      parsed = JSON.parse(cleaned);
-    } catch (e) {
-      // JSON 추출 재시도 — { 부터 } 까지
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[0]);
+      const cleaned = raw
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const objMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        parsed = JSON.parse(objMatch[0]);
       } else {
-        throw new Error("AI 응답을 파싱할 수 없습니다");
+        parsed = JSON.parse(cleaned);
       }
+    } catch (parseErr) {
+      console.error("JSON parse error:", parseErr, "raw:", raw);
+      return NextResponse.json(
+        { error: "AI 응답 파싱 실패. 다시 시도해주세요." },
+        { status: 500 }
+      );
     }
 
-    if (!parsed.words || !Array.isArray(parsed.words)) {
-      return Response.json({ words: [] });
-    }
+    const translations = (parsed.translations || []).map(t => ({
+      en: String(t.en || "").trim().toLowerCase(),
+      ko: String(t.ko || "").trim(),
+    })).filter(t => t.en && t.ko);
 
-    // 정규화 + 중복 제거
-    const seen = new Set();
-    const words = [];
-    for (const w of parsed.words) {
-      if (!w.en || typeof w.en !== "string") continue;
-      const en = w.en.trim().toLowerCase();
-      if (!en || seen.has(en)) continue;
-      seen.add(en);
-      words.push({
-        en,
-        ko: typeof w.ko === "string" ? w.ko.trim() : "",
-      });
-    }
+    return NextResponse.json({ translations });
 
-    return Response.json({ words });
-  } catch (err) {
-    console.error("extract-words 에러:", err);
-    const msg = err?.message || "사진 분석 실패";
-    return Response.json({ error: msg }, { status: 500 });
+  } catch (networkErr) {
+    console.error("Network error:", networkErr);
+    return NextResponse.json(
+      { error: "네트워크 오류. 다시 시도해주세요." },
+      { status: 503 }
+    );
   }
+}
+
+// GET 요청은 허용하지 않음
+export async function GET() {
+  return NextResponse.json({ error: "POST 요청만 지원합니다." }, { status: 405 });
 }
