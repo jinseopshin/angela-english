@@ -48,7 +48,8 @@ import { PronunciationWidget } from "./PronunciationWidget";
 import { recordWordEncounter, getTodayReviewWords } from "./studentWords";
 import WordLearningDashboard from "./WordLearningDashboard";
 import { addToWordbook, removeFromWordbook, isInWordbook } from "./studentWords";
-import { onCorrect, onWrong, onFinish, playStart, playClick } from "./soundEffects";
+import { onCorrect, onWrong, onFinish, playStart, playClick, playCombo, showCombo } from "./soundEffects";
+import { useAngela, getComboReaction, getFinishReaction } from "./AngelaMascot";
 
 
 // ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
@@ -2611,7 +2612,13 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
   const [wrongWord, setWrongWord] = useState(null);
   const [isFav, setIsFav] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const [combo, setCombo] = useState(0);          // 🔥 연속 정답 카운터
+  const [maxCombo, setMaxCombo] = useState(0);    // 🏆 이번 게임 최고 콤보
+  const [bonusPoints, setBonusPoints] = useState(0); // 💎 콤보 보너스 누적
+  const [comboAnimating, setComboAnimating] = useState(false); // 콤보 숫자 점프 애니메이션
+  const angela = useAngela();                      // 🦊 Angela 마스코트 훅
   const awardedRef = useRef(false);
+  const wrongCountRef = useRef(0);                 // 이전에 틀렸는지 추적 (recovery용)
 
   const questions = useMemo(() => {
     if (!mode) return [];
@@ -2665,11 +2672,14 @@ useEffect(() => {
     if (questions.length === 0 || round < questions.length) return;
     awardedRef.current = true;
     onFinish(score, questions.length);  // 🎮 종료 사운드 + 꽃가루 (80% 이상)
+    // 🦊 Angela 종료 반응 (1.5초 후 - 팡파레 뒤)
+    setTimeout(() => angela.show(getFinishReaction(score, questions.length)), 1500);
     saveStudentRecord(setStudents, name, {
       type: "game", gameType: `단어맞추기(${mode.label})`,
       score, total: questions.length,
       category: questions[0]?.cat || "기타",
-      points: score * 10
+      points: score * 10 + bonusPoints,  // 💎 콤보 보너스 추가
+      maxCombo  // 🏆 최고 콤보 기록 저장
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, round, questions.length]);
@@ -2710,7 +2720,7 @@ useEffect(() => {
     );
   }
 
-  // ── 게임 종료 ──
+// ── 게임 종료 ──
   if (round >= questions.length) {
     return (
       <div style={{ minHeight: "100vh", background: T.bg, padding: "60px 20px", textAlign: "center" }}>
@@ -2720,16 +2730,45 @@ useEffect(() => {
           {score >= 8 ? "정말 잘했어요!" : score >= 5 ? "좋아요!" : "다시 도전해봐요!"}
         </div>
         <div style={{ fontSize: 12, color: T.textMid, marginBottom: 20 }}>모드: {mode.label}</div>
+
+        {/* 점수 + 보너스 카드 */}
         <Card style={{ maxWidth: 320, margin: "0 auto 14px", background: T.yellowLight }}>
           <div style={{ fontSize: 32 }}>⭐</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>+{score * 10} 포인트 획득!</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>+{score * 10} 포인트</div>
+          {bonusPoints > 0 && (
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444", marginTop: 4 }}>
+              🔥 콤보 보너스 +{bonusPoints}p
+            </div>
+          )}
+          <div style={{ fontSize: 16, fontWeight: 900, color: T.text, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${T.border}` }}>
+            총 +{score * 10 + bonusPoints}p
+          </div>
         </Card>
+
+        {/* 최고 콤보 표시 (3 이상) */}
+        {maxCombo >= 3 && (
+          <Card style={{ maxWidth: 320, margin: "0 auto 14px", background: `linear-gradient(135deg, ${T.red}15, ${T.yellow}15)`, border: `1.5px solid ${T.red}33` }}>
+            <div style={{ fontSize: 11, color: T.textMid, marginBottom: 4 }}>🏆 이번 게임 최고 콤보</div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: maxCombo >= 10 ? "#ef4444" : maxCombo >= 5 ? "#f59e0b" : "#22c55e" }}>
+              🔥 {maxCombo} COMBO
+            </div>
+          </Card>
+        )}
+
         <div style={{ display: "flex", gap: 10, maxWidth: 320, margin: "0 auto" }}>
-          <Btn v="secondary" size="lg" onClick={() => { setMode(null); setRound(0); setScore(0); awardedRef.current = false; }} style={{ flex: 1 }}>
+          <Btn v="secondary" size="lg" onClick={() => {
+            setMode(null); setRound(0); setScore(0);
+            setCombo(0); setMaxCombo(0); setBonusPoints(0);
+            wrongCountRef.current = 0;
+            awardedRef.current = false;
+          }} style={{ flex: 1 }}>
             🔄 다시하기
           </Btn>
           <Btn v="primary" size="lg" onClick={onExit} style={{ flex: 1 }}>홈으로</Btn>
         </div>
+
+        {/* 🦊 Angela 마스코트 */}
+        <angela.AngelaComponent position="right" size="lg" duration={3000} />
       </div>
     );
   }
@@ -2741,15 +2780,69 @@ const pick = (idx) => {
     const isCorrect = idx === q.ansIdx;
     recordWordEncounter(name, q, isCorrect);  // ✅ 망각 곡선 자동 업데이트
     if (isCorrect) {
+      // 🔥 콤보 증가
+      const newCombo = combo + 1;
+      setCombo(newCombo);
+      if (newCombo > maxCombo) setMaxCombo(newCombo);
+      // 콤보 카운터 점프 애니메이션
+      setComboAnimating(true);
+      setTimeout(() => setComboAnimating(false), 400);
+
+      // 💎 콤보 보너스 포인트 (3/5/7/10/15 단계)
+      let bonus = 0;
+      if (newCombo === 3) bonus = 5;
+      else if (newCombo === 5) bonus = 15;
+      else if (newCombo === 7) bonus = 30;
+      else if (newCombo === 10) bonus = 50;
+      else if (newCombo === 15) bonus = 100;
+      if (bonus > 0) setBonusPoints(p => p + bonus);
+
       setScore(score + 1);
       setFeedback("correct");
       setWrongWord(null);
       onCorrect();  // 🎮 사운드 + 별 효과
+
+      // 🔥 콤보 사운드 + 시각 효과 (3콤보부터)
+      if (newCombo >= 3) {
+        setTimeout(() => {
+          playCombo(newCombo);
+          showCombo(newCombo);
+        }, 250);
+      }
+
+      // 🦊 Angela 마스코트 반응
+      if (newCombo >= 3) {
+        // 콤보 등급에 맞는 반응
+        setTimeout(() => angela.show(getComboReaction(newCombo)), 800);
+      } else if (wrongCountRef.current > 0) {
+        // 오답 후 회복: recovery 메시지
+        setTimeout(() => angela.show("recovery"), 400);
+      } else if (round === 0) {
+        // 첫 정답
+        setTimeout(() => angela.show("firstCorrect"), 400);
+      } else {
+        // 일반 정답 (랜덤하게 30% 확률로 등장)
+        if (Math.random() < 0.3) {
+          setTimeout(() => angela.show("correct"), 400);
+        }
+      }
+
+      wrongCountRef.current = 0; // 정답 시 오답 카운터 리셋
       if (levelId === "homework") updateWordMastery(setStudents, name, q.en, true);
     } else {
+      // 🔥 콤보 리셋
+      setCombo(0);
+      wrongCountRef.current += 1;
+
       setFeedback("wrong");
       setWrongWord(q);
       onWrong();  // 🎮 사운드 + 화면 흔들기
+
+      // 🦊 Angela 위로 (50% 확률)
+      if (Math.random() < 0.5) {
+        setTimeout(() => angela.show("wrong"), 300);
+      }
+
       if (levelId === "homework") updateWordMastery(setStudents, name, q.en, false);
     }
     setTimeout(() => { setFeedback(null); setWrongWord(null); setRound(round + 1); }, 1000);
@@ -2765,14 +2858,33 @@ const pick = (idx) => {
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, padding: 16 }}>
-      {/* 헤더 */}
+{/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <Tag color={isKo2En ? "blue" : "green"}>{dirTag}</Tag>
           <Tag color="blue">{round + 1} / {questions.length}</Tag>
         </div>
-        <Tag color="yellow">⭐ {score}</Tag>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {/* 🔥 콤보 카운터 (1콤보부터 보이게) */}
+          {combo >= 1 && (
+            <div className={comboAnimating ? "combo-count-active" : ""} style={{
+              fontSize: 11, fontWeight: 900,
+              padding: "3px 9px", borderRadius: 8,
+              color: "white",
+              background: combo >= 10 ? "linear-gradient(135deg, #ef4444, #f97316)"
+                        : combo >= 5 ? "linear-gradient(135deg, #f59e0b, #fbbf24)"
+                        : combo >= 3 ? "linear-gradient(135deg, #22c55e, #84cc16)"
+                        : "#94a3b8",
+              boxShadow: combo >= 5 ? `0 0 12px ${combo >= 10 ? "#ef444466" : "#f59e0b66"}` : "none",
+              display: "inline-block",
+              transition: "all 0.2s"
+            }}>
+              🔥 {combo}
+            </div>
+          )}
+          <Tag color="yellow">⭐ {score}</Tag>
+        </div>
       </div>
 
       {/* ⭐ 단어장 토글 (상단 우측) */}
@@ -2855,7 +2967,7 @@ const pick = (idx) => {
         })}
       </div>
 
-      {/* 피드백 */}
+{/* 피드백 */}
       {feedback && (
         <div style={{
           textAlign: "center", marginTop: 14, padding: "10px 16px",
@@ -2869,6 +2981,9 @@ const pick = (idx) => {
           }
         </div>
       )}
+
+      {/* 🦊 Angela 마스코트 */}
+      <angela.AngelaComponent position="right" size="md" duration={1800} />
     </div>
   );
 }
