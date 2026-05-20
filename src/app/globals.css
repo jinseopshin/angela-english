@@ -194,3 +194,83 @@ body.shake-active.shake-hard {
   50% { transform: translate(-50%, -50%) scale(1.1); }
   100% { transform: translate(-50%, -50%) scale(1); }
 }
+/* ══════════════════════════════════════════════════════════════════ */
+/*   Angela 마스코트 + 콤보 효과 애니메이션                            */
+/* ══════════════════════════════════════════════════════════════════ */
+
+/* Angela 마스코트 등장 시 통통 튀기 */
+@keyframes angela-bounce {
+  0% { transform: scale(0.6) rotate(-15deg); }
+  40% { transform: scale(1.15) rotate(5deg); }
+  60% { transform: scale(0.95) rotate(-3deg); }
+  80% { transform: scale(1.05) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* 콤보 배경 광선 효과 (5콤보 이상) */
+@keyframes combo-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* 콤보 텍스트 진동 (15콤보 전설급) */
+@keyframes combo-shake {
+  0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  10% { transform: translate(-52%, -50%) scale(1.05) rotate(-2deg); }
+  20% { transform: translate(-48%, -50%) scale(1.05) rotate(2deg); }
+  30% { transform: translate(-51%, -49%) scale(1.05) rotate(-1deg); }
+  40% { transform: translate(-49%, -51%) scale(1.05) rotate(1deg); }
+  50% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); }
+}
+
+/* 마스코트 말풍선 살짝 흔들기 (호기심 끌기용) */
+@keyframes mascot-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+}
+
+/* 콤보 카운터 숫자 증가 시 점프 효과 */
+@keyframes combo-count-up {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); color: #ef4444; }
+  100% { transform: scale(1); }
+}
+
+.combo-count-active {
+  animation: combo-count-up 0.4s ease-out;
+}
+
+/* 무지개 그라데이션 텍스트 (15콤보 전설급) */
+@keyframes rainbow-text {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.rainbow-active {
+  animation: rainbow-text 2s linear infinite;
+}
+
+/* 황금 빛 효과 (10콤보+) */
+@keyframes golden-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(251, 191, 36, 1)) drop-shadow(0 0 30px rgba(239, 68, 68, 0.5));
+  }
+}
+
+.golden-glow-active {
+  animation: golden-glow 1s ease-in-out infinite;
+}
