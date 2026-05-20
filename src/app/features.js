@@ -2621,16 +2621,11 @@ function CustomWordsInput({ students, setStudents, onBack, onComplete }) {
 
   // ── 사진 OCR 처리 ──
   const handlePhotoFile = async (e) => {
-    console.log("[OCR] handlePhotoFile 호출됨", e.target.files);
     const files = e.target.files;
-    if (!files || files.length === 0) {
-      console.log("[OCR] 파일 없음, 종료");
-      return;
-    }
+    if (!files || files.length === 0) return;
 
     // 파일 정보를 미리 배열로 복사 (e.target.value 초기화 전에)
     const fileList = Array.from(files);
-    console.log(`[OCR] ${fileList.length}개 파일 선택됨`, fileList.map(f => `${f.name} (${(f.size/1024).toFixed(0)}KB, ${f.type})`));
 
     setBusy(true);
     setError("");
@@ -2641,32 +2636,25 @@ function CustomWordsInput({ students, setStudents, onBack, onComplete }) {
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
         setBusyMsg(`사진 ${i+1}/${fileList.length} 분석 중... 📸 (${file.name})`);
-        console.log(`[OCR] ${i+1}번 사진 base64 변환 시작:`, file.name);
         const base64 = await fileToBase64(file);
-        console.log(`[OCR] base64 변환 완료, 길이: ${base64.length}`);
         const mediaType = file.type || "image/jpeg";
 
-        console.log(`[OCR] API 호출 시작: /api/extract-words`);
         const res = await fetch("/api/extract-words", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image: base64, mediaType }),
         });
-        console.log(`[OCR] API 응답 받음, status: ${res.status}`);
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          console.error(`[OCR] API 오류:`, data);
           throw new Error(data.error || `사진 ${i+1} 분석 실패 (${res.status})`);
         }
         const data = await res.json();
-        console.log(`[OCR] 응답 데이터:`, data);
         if (data.words && Array.isArray(data.words)) {
           allWords = allWords.concat(data.words);
         }
       }
 
-      console.log(`[OCR] 전체 추출 완료, ${allWords.length}개 단어`);
       if (allWords.length === 0) {
         setError("사진에서 단어를 찾지 못했어요. 다른 사진을 시도해주세요.");
       } else {
@@ -2677,7 +2665,7 @@ function CustomWordsInput({ students, setStudents, onBack, onComplete }) {
         setTimeout(() => setBusyMsg(""), 2000);
       }
     } catch (err) {
-      console.error("[OCR] 에러:", err);
+      console.error("사진 분석 에러:", err);
       setError(err.message || "사진 분석 중 오류");
     } finally {
       setBusy(false);
