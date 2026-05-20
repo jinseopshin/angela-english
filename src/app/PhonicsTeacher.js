@@ -487,40 +487,46 @@ function PhonicsAssignView({ setId, students, onBack }) {
         💡 학생 이름을 클릭하면 배정/해제됩니다. 배정된 학생은 메인 화면에 이 단어집이 표시돼요.
       </div>
 
-      {students && students.length > 0 ? (
-        <div style={{ display: "grid", gap: 8 }}>
-          {students.map(s => {
-            const assigned = assignedNames.includes(s.name);
-            return (
-              <div key={s.id || s.name} onClick={() => toggle(s.name)} style={{
-                padding: 12, borderRadius: 12, cursor: "pointer",
-                background: assigned ? T.green : T.card,
-                color: assigned ? "white" : T.text,
-                border: `2px solid ${assigned ? T.green : T.border}`,
-                display: "flex", alignItems: "center", gap: 10,
-                transition: "all 0.2s"
-              }}>
-                <div style={{ fontSize: 24 }}>{s.avatar || "🙂"}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800 }}>{s.name}</div>
-                  {assigned && (
-                    <div style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}>✅ 배정됨</div>
-                  )}
+      {(() => {
+        // students는 객체일 수도, 배열일 수도 있음 - 둘 다 지원
+        const studentList = Array.isArray(students)
+          ? students
+          : Object.values(students || {});
+        return studentList.length > 0 ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            {studentList.map(s => {
+              const assigned = assignedNames.includes(s.name);
+              return (
+                <div key={s.id || s.name} onClick={() => toggle(s.name)} style={{
+                  padding: 12, borderRadius: 12, cursor: "pointer",
+                  background: assigned ? T.green : T.card,
+                  color: assigned ? "white" : T.text,
+                  border: `2px solid ${assigned ? T.green : T.border}`,
+                  display: "flex", alignItems: "center", gap: 10,
+                  transition: "all 0.2s"
+                }}>
+                  <div style={{ fontSize: 24 }}>{s.avatar || "🙂"}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>{s.name}</div>
+                    {assigned && (
+                      <div style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}>✅ 배정됨</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 18 }}>{assigned ? "✓" : "+"}</div>
                 </div>
-                <div style={{ fontSize: 18 }}>{assigned ? "✓" : "+"}</div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={{
-          padding: 30, textAlign: "center",
-          color: T.textMid, fontSize: 13,
-          border: `2px dashed ${T.border}`, borderRadius: 12
-        }}>
-          📚 등록된 학생이 없어요. 학생을 먼저 추가해주세요.
-        </div>
-      )}
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{
+            padding: 30, textAlign: "center",
+            color: T.textMid, fontSize: 13,
+            border: `2px dashed ${T.border}`, borderRadius: 12
+          }}>
+            📚 등록된 학생이 없어요. 학생을 먼저 추가해주세요.
+          </div>
+        );
+      })()}
 
       <div style={{
         marginTop: 16, padding: 10, background: T.bg, borderRadius: 8,
