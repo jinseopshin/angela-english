@@ -49,7 +49,7 @@ import { recordWordEncounter, getTodayReviewWords } from "./studentWords";
 import WordLearningDashboard from "./WordLearningDashboard";
 import { addToWordbook, removeFromWordbook, isInWordbook } from "./studentWords";
 import { onCorrect, onWrong, onFinish, playStart, playClick, playCombo, showCombo } from "./soundEffects";
-import { useAngela, getComboReaction, getFinishReaction } from "./AngelaMascot";
+import { useAngela, getComboReaction, getFinishReaction, FullScreenConfetti, ComboFireEffect } from "./AngelaMascot";
 
 
 // ── 음성 합성 (발음 기능) ─────────────────────────────────────────────────
@@ -2616,6 +2616,7 @@ function WordMatchGame({ name, setStudents, student, onExit, levelId = "all" }) 
   const [maxCombo, setMaxCombo] = useState(0);    // 🏆 이번 게임 최고 콤보
   const [bonusPoints, setBonusPoints] = useState(0); // 💎 콤보 보너스 누적
   const [comboAnimating, setComboAnimating] = useState(false); // 콤보 숫자 점프 애니메이션
+  const [confettiTrigger, setConfettiTrigger] = useState(0);   // 🎊 Lottie 꽃가루 트리거
   const angela = useAngela();                      // 🦊 Angela 마스코트 훅
   const awardedRef = useRef(false);
   const wrongCountRef = useRef(0);                 // 이전에 틀렸는지 추적 (recovery용)
@@ -2672,6 +2673,10 @@ useEffect(() => {
     if (questions.length === 0 || round < questions.length) return;
     awardedRef.current = true;
     onFinish(score, questions.length);  // 🎮 종료 사운드 + 꽃가루 (80% 이상)
+    // 🎊 Lottie 꽃가루 (80% 이상 점수)
+    if (score / questions.length >= 0.8) {
+      setConfettiTrigger(Date.now());
+    }
     // 🦊 Angela 종료 반응 (1.5초 후 - 팡파레 뒤)
     setTimeout(() => angela.show(getFinishReaction(score, questions.length)), 1500);
     saveStudentRecord(setStudents, name, {
@@ -2756,9 +2761,10 @@ useEffect(() => {
         )}
 
         <div style={{ display: "flex", gap: 10, maxWidth: 320, margin: "0 auto" }}>
-          <Btn v="secondary" size="lg" onClick={() => {
+<Btn v="secondary" size="lg" onClick={() => {
             setMode(null); setRound(0); setScore(0);
             setCombo(0); setMaxCombo(0); setBonusPoints(0);
+            setConfettiTrigger(0);
             wrongCountRef.current = 0;
             awardedRef.current = false;
           }} style={{ flex: 1 }}>
@@ -2866,7 +2872,7 @@ const pick = (idx) => {
           <Tag color="blue">{round + 1} / {questions.length}</Tag>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {/* 🔥 콤보 카운터 (1콤보부터 보이게) */}
+{/* 🔥 콤보 카운터 (1콤보부터 보이게) */}
           {combo >= 1 && (
             <div className={comboAnimating ? "combo-count-active" : ""} style={{
               fontSize: 11, fontWeight: 900,
@@ -2877,10 +2883,14 @@ const pick = (idx) => {
                         : combo >= 3 ? "linear-gradient(135deg, #22c55e, #84cc16)"
                         : "#94a3b8",
               boxShadow: combo >= 5 ? `0 0 12px ${combo >= 10 ? "#ef444466" : "#f59e0b66"}` : "none",
-              display: "inline-block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
               transition: "all 0.2s"
             }}>
-              🔥 {combo}
+              {/* 3콤보부터 진짜 불꽃 Lottie, 그 이하는 이모지 */}
+              {combo >= 3 ? <ComboFireEffect active={true} size={18} /> : "🔥"}
+              {combo}
             </div>
           )}
           <Tag color="yellow">⭐ {score}</Tag>
@@ -2982,11 +2992,14 @@ const pick = (idx) => {
         </div>
       )}
 
-      {/* 🦊 Angela 마스코트 */}
-      <angela.AngelaComponent position="right" size="md" duration={1800} />
-    </div>
-  );
-}
+{/* 🦊 Angela 마스코트 */}
+        <angela.AngelaComponent position="right" size="lg" duration={3000} />
+
+        {/* 🎊 Lottie 꽃가루 폭발 (80% 이상 점수일 때) */}
+        <FullScreenConfetti trigger={confettiTrigger} duration={3500} />
+      </div>
+    );
+  }
 
 // ── 게임 2: 스펠링 ────────────────────────────────────────────────────────
  
