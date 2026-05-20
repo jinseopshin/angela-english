@@ -2211,7 +2211,7 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStu
         <div style={{ flex: 1, minWidth: 0 }}>
           {curInfo.back === null ? (
             <>
-              <div style={{ fontSize: 14, fontWeight: 900, color: T.text }}>Angela's Academy</div>
+              <div style={{ fontSize: 14, fontWeight: 900, color: T.text }}>Angela's English</div>
               <div style={{ fontSize: 10, color: T.textDim }}>선생님 모드</div>
             </>
           ) : (
