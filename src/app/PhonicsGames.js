@@ -213,7 +213,55 @@ export function PhonicsMenu({ studentName, onExit }) {
           </div>
         </div>
       )}
-
+ 
+      {/* 📚 기본 단계 */}
+      <div style={{
+        fontSize: 13, fontWeight: 800, color: T.text,
+        marginBottom: 8, display: "flex", alignItems: "center", gap: 6
+      }}>
+        <span style={{ fontSize: 16 }}>📚</span>
+        기본 단계
+      </div>
+      <div style={{ display: "grid", gap: 10 }}>
+        {PHONICS_LEVELS.map((lv, idx) => {
+          // 이 단계에서 가장 잘 한 게임의 별 수
+          const stars = Math.max(
+            ...["alphabet-sound", "first-sound", "cvc-blank", "picture-letter", "build-word"]
+              .map(g => (progress[`${lv.id}_${g}`]?.bestStars || 0))
+          );
+          return (
+            <Card key={lv.id} onClick={() => { playClick(); setSelectedLevel(lv.id); }}
+              style={{
+                padding: 14,
+                background: `linear-gradient(135deg, ${lv.bg}, white)`,
+                borderLeft: `5px solid ${lv.color}`,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 14
+              }}>
+              <div style={{ fontSize: 36 }}>{lv.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 10, color: T.textMid, fontWeight: 700 }}>STEP {idx+1}</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: T.text }}>{lv.label}</span>
+                </div>
+                <div style={{ fontSize: 10, color: T.textMid, marginBottom: 4 }}>{lv.desc}</div>
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  {[1, 2, 3].map(i => (
+                    <span key={i} style={{ fontSize: 13, opacity: stars >= i ? 1 : 0.25 }}>⭐</span>
+                  ))}
+                  <span style={{ fontSize: 10, color: T.textDim, marginLeft: 4 }}>
+                    · {lv.count}개 단어
+                  </span>
+                </div>
+              </div>
+              <div style={{ fontSize: 20, color: T.textDim }}>›</div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 //   📦 커스텀 단어집 메뉴
