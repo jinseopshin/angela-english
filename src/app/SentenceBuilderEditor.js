@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { T, Btn, Card } from "./theme";
 import { playClick } from "./soundEffects";
+import { AISentenceGenerator } from "./AISentenceGenerator";
 import {
   getAllSentences,
   saveSentence,
@@ -29,10 +30,20 @@ import {
 export function SentenceBuilderEditor({ onExit }) {
   const [editing, setEditing] = useState(null); // null | 'new' | {id: ...}
   const [refreshKey, setRefreshKey] = useState(0);
-
+  const [showAIGen, setShowAIGen] = useState(false);
   const sentences = useMemo(() => getAllSentences(), [refreshKey]);
   const refresh = () => setRefreshKey(k => k + 1);
 
+  // AI 생성 화면
+  if (showAIGen) {
+    return (
+      <AISentenceGenerator
+        onExit={() => setShowAIGen(false)}
+        onSaved={() => { refresh(); setShowAIGen(false); }}
+      />
+    );
+  }
+  
   if (editing !== null) {
     return (
       <SentenceForm
@@ -67,6 +78,24 @@ export function SentenceBuilderEditor({ onExit }) {
           + 새 문장
         </button>
       </div>
+{/* 🤖 AI 자동 생성 진입 배너 */}
+      <Card style={{
+        marginBottom: 14, padding: 14,
+        background: `linear-gradient(135deg, ${T.purple}, ${T.accent})`,
+        color: "white", cursor: "pointer", border: "none",
+        display: "flex", alignItems: "center", gap: 12
+      }} onClick={() => { playClick(); setShowAIGen(true); }}>
+        <div style={{ fontSize: 36 }}>🤖</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 3 }}>
+            AI로 문장 자동 생성
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.9 }}>
+            주제 선택 → AI가 즉시 학습용 문장 생성
+          </div>
+        </div>
+        <div style={{ fontSize: 22, opacity: 0.85 }}>›</div>
+      </Card>
 
       {sentences.length === 0 ? (
         <div style={{
@@ -241,19 +270,53 @@ function SentenceForm({ sentence, onSave, onCancel }) {
         </div>
       </div>
 
-      {/* 영어 문장 */}
+{/* 영어 문장 */}
       <div style={{ marginBottom: 14 }}>
         <label style={{ fontSize: 12, fontWeight: 800, color: T.text, display: "block", marginBottom: 6 }}>
           영어 문장 *
         </label>
-        <input type="text" value={english} onChange={e => setEnglish(e.target.value)}
-          placeholder="The cat is fat."
-          style={{
-            width: "100%", padding: "10px 12px",
-            border: `2px solid ${T.border}`, borderRadius: 10,
-            fontSize: 15, fontFamily: "inherit"
-          }}
-        />
+        <div style={{ display: "flex", gap: 6 }}>
+          <input type="text" value={english} onChange={e => setEnglish(e.target.value)}
+            placeholder="The cat is fat."
+            style={{
+              flex: 1, padding: "10px 12px",
+              border: `2px solid ${T.border}`, borderRadius: 10,
+              fontSize: 15, fontFamily: "inherit"
+            }}
+          />
+          <button type="button"
+            onClick={async () => {
+              if (!korean.trim()) {
+                alert("먼저 한글 뜻을 입력해주세요");
+                return;
+              }
+              try {
+                const res = await fetch("/api/translate-sentence", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: korean, direction: "ko-to-en" }),
+                });
+                const data = await res.json();
+                if (res.ok && data.translation) {
+                  setEnglish(data.translation);
+                  playClick();
+                } else {
+                  alert("번역 실패: " + (data.error || "다시 시도해주세요"));
+                }
+              } catch (e) {
+                alert("번역 오류: " + e.message);
+              }
+            }}
+            style={{
+              background: T.purpleLight, color: T.purple,
+              border: `2px solid ${T.purple}`, borderRadius: 10,
+              padding: "0 12px", fontSize: 11, fontWeight: 800,
+              cursor: "pointer", whiteSpace: "nowrap"
+            }}
+            title="한글 뜻을 영어로 자동 번역">
+            🤖 영어로
+          </button>
+        </div>
         {wordsPreview.length > 0 && (
           <div style={{ marginTop: 8, fontSize: 11, color: T.textMid }}>
             단어 분리: <span style={{ fontFamily: "monospace" }}>
@@ -270,19 +333,53 @@ function SentenceForm({ sentence, onSave, onCancel }) {
         )}
       </div>
 
-      {/* 한글 뜻 */}
+{/* 한글 뜻 */}
       <div style={{ marginBottom: 14 }}>
         <label style={{ fontSize: 12, fontWeight: 800, color: T.text, display: "block", marginBottom: 6 }}>
           한글 뜻 *
         </label>
-        <input type="text" value={korean} onChange={e => setKorean(e.target.value)}
-          placeholder="고양이가 뚱뚱해요."
-          style={{
-            width: "100%", padding: "10px 12px",
-            border: `2px solid ${T.border}`, borderRadius: 10,
-            fontSize: 14, fontFamily: "inherit"
-          }}
-        />
+        <div style={{ display: "flex", gap: 6 }}>
+          <input type="text" value={korean} onChange={e => setKorean(e.target.value)}
+            placeholder="고양이가 뚱뚱해요."
+            style={{
+              flex: 1, padding: "10px 12px",
+              border: `2px solid ${T.border}`, borderRadius: 10,
+              fontSize: 14, fontFamily: "inherit"
+            }}
+          />
+          <button type="button"
+            onClick={async () => {
+              if (!english.trim()) {
+                alert("먼저 영어 문장을 입력해주세요");
+                return;
+              }
+              try {
+                const res = await fetch("/api/translate-sentence", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ text: english, direction: "en-to-ko" }),
+                });
+                const data = await res.json();
+                if (res.ok && data.translation) {
+                  setKorean(data.translation);
+                  playClick();
+                } else {
+                  alert("번역 실패: " + (data.error || "다시 시도해주세요"));
+                }
+              } catch (e) {
+                alert("번역 오류: " + e.message);
+              }
+            }}
+            style={{
+              background: T.purpleLight, color: T.purple,
+              border: `2px solid ${T.purple}`, borderRadius: 10,
+              padding: "0 12px", fontSize: 11, fontWeight: 800,
+              cursor: "pointer", whiteSpace: "nowrap"
+            }}
+            title="영어 문장을 한글로 자동 번역">
+            🤖 한글로
+          </button>
+        </div>
       </div>
 
       {/* 난이도 */}
