@@ -12,6 +12,7 @@ import {
 import { useAngela, getComboReaction, getFinishReaction, FullScreenConfetti } from "./AngelaMascot";
 import { PhonicsClassMode } from "./PhonicsClassMode";
 import { fetchWordImage } from "./pexelsImage";
+import { filterPictureableWords } from "./pictureableWords";
 
 // ══════════════════════════════════════════════════════════════════════════
 //   🔤 PhonicsGames.js — 유치부 파닉스 게임 5종
@@ -914,23 +915,26 @@ function CVCBlankGame({ studentName, levelId, gameId, onBack, onExit }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-//   GAME 4: 🖼️ 그림 보고 첫글자 고르기 (Pexels 이미지 + 힌트 버튼)
+//   GAME 4: 🖼️ 그림 보고 첫글자 고르기 (Pexels 이미지 + 힌트 버튼 + 추상 단어 필터)
 //   - Pexels API에서 실제 사진 로드
-//   - 로드 실패/없을 때 기존 이모지 폴백
-//   - 💡 힌트 버튼: 누르면 단어 텍스트 표시
+//   - 추상 단어(big, hot, run, the 등) 자동 제외
+//   - 💡 힌트 버튼: 누르면 첫글자 가린 단어 표시
+//   - 로드 실패 시 기존 이모지 폴백
 // ══════════════════════════════════════════════════════════════════════════
 function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, customWords }) {
   const [rounds] = useState(() => {
-    const all = customWords || getPhonicsWords(levelId);
-    return shuffle(all).slice(0, Math.min(10, all.length));
+    const source = customWords || getPhonicsWords(levelId);
+    // ★ 추상 단어 필터링 (big, hot, the, and, run 등 제외)
+    const pictureable = filterPictureableWords(source);
+    return shuffle(pictureable).slice(0, Math.min(10, pictureable.length));
   });
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [feedback, setFeedback] = useState(null);
   const [done, setDone] = useState(false);
-  const [showHint, setShowHint] = useState(false); // 💡 힌트 표시 여부
-  const [imageUrl, setImageUrl] = useState(null);  // 현재 단어의 Pexels 이미지
+  const [showHint, setShowHint] = useState(false);
+  const [imageUrl, setImageUrl] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const angela = useAngela();
@@ -953,7 +957,7 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
       if (url) {
         setImageUrl(url);
       } else {
-        setImageError(true); // 이모지 폴백 트리거
+        setImageError(true);
       }
       setImageLoading(false);
     });
@@ -1005,12 +1009,11 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
     return <FinishScreen score={score} total={rounds.length} levelId={levelId} onBack={onBack} onExit={onExit} />;
   }
 
+  // ★ 필터링 후 단어가 없을 때 안내
   if (!current) {
-    return <EmptyPoolMessage onBack={onBack} />;
+    return <EmptyPoolMessage onBack={onBack} message="이 단계엔 그림으로 풀 수 있는 단어가 없어요" />;
   }
 
-  // 단어의 첫글자만 가리고 나머지는 보여주기 (힌트용)
-  const firstLetter = current.word.charAt(0);
   const restOfWord = current.word.slice(1);
 
   return (
@@ -1079,7 +1082,6 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
             />
           )}
           {!imageLoading && (imageError || !imageUrl) && (
-            // 이모지 폴백
             <div style={{ fontSize: 130, lineHeight: 1 }}>{current.emoji}</div>
           )}
         </div>
@@ -1088,7 +1090,7 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
           이 그림의 첫 글자는?
         </div>
 
-        {/* 💡 힌트 표시: 첫글자만 가린 단어 */}
+        {/* 💡 힌트 표시 */}
         {showHint && feedback === null && (
           <div style={{
             marginTop: 12,
