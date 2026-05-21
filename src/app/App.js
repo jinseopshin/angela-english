@@ -29,6 +29,7 @@ import { PronunciationGame } from "./PronunciationGame";
 import { PronunciationWidget } from "./PronunciationWidget";
 import WordLearningDashboard from "./WordLearningDashboard";
 import { PhonicsTeacherMenu } from "./PhonicsTeacher";
+import { SentenceBuilderEditor } from "./SentenceBuilderEditor";
 import { recordWordEncounter, getTodayReviewWords } from "./studentWords";
 import { addToWordbook, removeFromWordbook, isInWordbook } from "./studentWords";
 import {
@@ -1438,6 +1439,7 @@ function TeacherHome({ bank, exams, students, onNav }) {
           { id: "manage",        icon: "👤", label: "학생 관리",        desc: "학생 등록 · 정보 수정",   color: T.green,  bg: T.greenLight },
           { id: "assign",        icon: "📬", label: "과제 배정",        desc: "문제집을 학생에게 배정",  color: T.orange, bg: T.orangeLight },
           { id: "phonics",       icon: "🔤", label: "파닉스 단어집",    desc: "파닉스 단어집 만들기",    color: T.pink,   bg: T.pinkLight },
+          { id: "sentence-builder-teacher", icon: "📝", label: "문장 만들기 출제", desc: "섞인 단어로 문장 만들기", color: T.orange, bg: T.orangeLight },
           { id: "word-stats",    icon: "📖", label: "단어 학습 현황",   desc: "학생별 단어 진도 통계",   color: T.purple, bg: T.purpleLight },
         ].map(m => (
           <Card key={m.id} onClick={() => onNav(m.id)} style={{ padding: 16 }}>
@@ -2180,6 +2182,7 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStu
     "custom-exam":   { title:"📝 맞춤 시험지", back: "dashboard" },
     "word-stats":    { title:"📖 단어 학습 현황", back: "more" },
     "phonics":       { title:"🔤 파닉스 단어집", back: "more" },
+    "sentence-builder-teacher": { title:"📝 문장 만들기 출제", back: "more" },
     "student-report": { title:"학생 상세 리포트", back: "students" },
   };
 
@@ -2261,6 +2264,9 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStu
         {screen === "phonics" && (
           <PhonicsTeacherMenu students={students} onExit={() => onNav("more")} />
         )}
+         {screen === "sentence-builder-teacher" && (
+          <SentenceBuilderEditor onExit={() => onNav("more")} />
+        )}
         {screen === "student-report"  && reportStudent && (
           <>
             <StudentWordStatsCard studentName={reportStudent.name} />
@@ -2315,6 +2321,7 @@ function TeacherApp({ onLogout, bank, setBank, exams, setExams, students, setStu
                   { id:"exams",        icon:"📋", label:"시험지 목록",   desc:"만든 시험지 보기 / 인쇄" },
                   { id:"custom-exam",  icon:"📝", label:"맞춤 시험지",   desc:"학생별 문제 골라 출제" },
                   { id:"phonics",      icon:"🔤", label:"파닉스 단어집", desc:"유치부 파닉스 관리" },
+                  { id:"sentence-builder-teacher", icon:"📝", label:"문장 만들기 출제", desc:"섞인 단어 문장 출제" },
                 ].map(m => (
                   <Card key={m.id} onClick={() => onNav(m.id)} style={{ padding: 14, textAlign: "center" }}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>{m.icon}</div>
