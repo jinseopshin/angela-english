@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════════════════
 //   🖼️ phonicsImages.js — 단어 → Cloudinary URL 매핑
-//   v4.2 — 알파벳 26개 + CVC 16개 활성화 (#1~42 완료)
+//   v4.4 — 알파벳 26개 + CVC 32개 + Magic E 6개 활성화 (64개 완료)
 // ══════════════════════════════════════════════════════════════════════════
 
 // ⭐ 진섭님의 Cloudinary Cloud Name으로 변경하세요
@@ -39,8 +39,8 @@ const WORD_TO_PUBLIC_ID = {
   yellow:   "phonics/yellow",
   zebra:    "phonics/zebra",
 
-  // ═══ Level 2: CVC #27~42 (완료) ═══
-  // Short A (8개)
+  // ═══ Level 2: CVC 전체 (완료) ═══
+  // Short A
   bat:      "phonics/bat",
   rat:      "phonics/rat",
   mat:      "phonics/mat",
@@ -49,7 +49,7 @@ const WORD_TO_PUBLIC_ID = {
   cap:      "phonics/cap",
   fan:      "phonics/fan",
   can:      "phonics/can",
-  // Short E (8개)
+  // Short E
   bed:      "phonics/bed",
   hen:      "phonics/hen",
   pen:      "phonics/pen",
@@ -58,39 +58,38 @@ const WORD_TO_PUBLIC_ID = {
   leg:      "phonics/leg",
   net:      "phonics/net",
   web:      "phonics/web",
+  // Short I (fish는 알파벳에서 이미 등록됨)
+  six:      "phonics/six",
+  lip:      "phonics/lip",
+  kid:      "phonics/kid",
+  pin:      "phonics/pin",
+  milk:     "phonics/milk",
+  // Short O (box는 알파벳에서 이미 등록됨)
+  fox:      "phonics/fox",
+  pot:      "phonics/pot",
+  log:      "phonics/log",
+  mop:      "phonics/mop",
+  rock:     "phonics/rock",
+  frog:     "phonics/frog",
+  // Short U
+  bus:      "phonics/bus",
+  cup:      "phonics/cup",
+  duck:     "phonics/duck",
+  nut:      "phonics/nut",
+  bug:      "phonics/bug",
+  drum:     "phonics/drum",
+  mug:      "phonics/mug",
 
-  // ═══ Level 2: CVC #43~ (진행 중) ═══
-  // 완료한 단어만 주석 해제하세요
-  // fish는 알파벳에서 이미 등록됨 - 추가 안 해도 됨
-  // six:      "phonics/six",
-  // lip:      "phonics/lip",
-  // kid:      "phonics/kid",
-  // pin:      "phonics/pin",
-  // milk:     "phonics/milk",
-  // fox:      "phonics/fox",
-  // box는 알파벳에서 이미 등록됨 - 추가 안 해도 됨
-  // pot:      "phonics/pot",
-  // log:      "phonics/log",
-  // mop:      "phonics/mop",
-  // rock:     "phonics/rock",
-  // frog:     "phonics/frog",
-  // bus:      "phonics/bus",
-  // cup:      "phonics/cup",
-  // duck:     "phonics/duck",
-  // nut:      "phonics/nut",
-  // bug:      "phonics/bug",
-  // drum:     "phonics/drum",
-  // mug:      "phonics/mug",
-
-  // ═══ Level 3: Magic E (대기 중) ═══
-  // cape:     "phonics/cape",
-  // tape:     "phonics/tape",
-  // kite:     "phonics/kite",
-  // pine:     "phonics/pine",
-  // ride:     "phonics/ride",
-  // tube:     "phonics/tube",
+  // ═══ Level 3: Magic E 6개 (완료) ═══
+  cape:     "phonics/cape",
+  tape:     "phonics/tape",
+  kite:     "phonics/kite",
+  pine:     "phonics/pine",
+  ride:     "phonics/ride",
+  tube:     "phonics/tube",
 
   // ═══ Level 4: Blends (대기 중) ═══
+  // 완료한 단어만 주석 해제하세요
   // chair:    "phonics/chair",
   // cheese:   "phonics/cheese",
   // chicken:  "phonics/chicken",
