@@ -12,7 +12,7 @@ import {
 import { useAngela, getComboReaction, getFinishReaction, FullScreenConfetti } from "./AngelaMascot";
 import { PhonicsClassMode } from "./PhonicsClassMode";
 // ✨ 새로 추가: Cloudinary 큐레이션 이미지
-import { getCuratedImageUrl, hasCuratedImage } from "./phonicsImages";
+import { getCuratedImageUrl, hasCuratedImage, preloadImages } from "./phonicsImages";
 
 // ══════════════════════════════════════════════════════════════════════════
 //   🔤 PhonicsGames.js — 유치부 파닉스 게임 5종
@@ -896,6 +896,18 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
   const [confettiTrigger, setConfettiTrigger] = useState(0);
 
   const current = rounds[idx];
+
+  // ⚡ 다음 라운드 이미지 사전 로드 (체감 속도 향상)
+  useEffect(() => {
+    if (!rounds || rounds.length === 0) return;
+    // 처음 진입 시 처음 3개 사전 로드
+    if (idx === 0) {
+      preloadImages(rounds.slice(0, 3));
+    }
+    // 매 라운드마다 다음 2개 사전 로드
+    const nextRounds = rounds.slice(idx + 1, idx + 3);
+    preloadImages(nextRounds);
+  }, [idx, rounds]);
   const choices = useMemo(() => current ? makeAlphabetChoices(getFirstLetter(current.word)) : [], [current]);
   const imageUrl = useMemo(() => current ? getCuratedImageUrl(current.word) : null, [current]);
 
@@ -1006,6 +1018,7 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
             <img
               src={imageUrl}
               alt={current.word}
+              loading="lazy"
               onError={() => setImageError(true)}
               style={{
                 width: "100%", height: "100%",
