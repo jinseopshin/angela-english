@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 
 // ⭐ 진섭님의 Cloudinary Cloud Name으로 변경하세요
-const CLOUDINARY_BASE = "https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/";
+const CLOUDINARY_BASE = "https://res.cloudinary.com/dfgyp3ovs/image/upload/";
 
 // 이미지 변환 옵션 (자동 최적화)
 const TRANSFORM = "f_auto,q_auto,w_400,h_300,c_fill/";
