@@ -11,7 +11,7 @@ import {
 } from "./soundEffects";
 import { useAngela, getComboReaction, getFinishReaction, FullScreenConfetti } from "./AngelaMascot";
 import { PhonicsClassMode } from "./PhonicsClassMode";
-import { fetchWordImage } from "./pixabayImage";
+import { getCuratedImageUrl, hasCuratedImage } from "./phonicsImages";
 import { filterPictureableWords } from "./pictureableWords";
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -915,18 +915,22 @@ function CVCBlankGame({ studentName, levelId, gameId, onBack, onExit }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-//   GAME 4: 🖼️ 그림 보고 첫글자 고르기 (Pexels 이미지 + 힌트 버튼 + 추상 단어 필터)
-//   - Pexels API에서 실제 사진 로드
-//   - 추상 단어(big, hot, run, the 등) 자동 제외
-//   - 💡 힌트 버튼: 누르면 첫글자 가린 단어 표시
-//   - 로드 실패 시 기존 이모지 폴백
+//   GAME 4: 🖼️ 그림 보고 첫글자 고르기 (Cloudinary 큐레이션 이미지)
+//   - 큐레이션 이미지 URL 직접 사용 (API 호출 X)
+//   - 없는 단어는 자동으로 단어 풀에서 제외
+//   - 💡 힌트 버튼 유지
+//   - 이미지 로드 실패 시 이모지 폴백
 // ══════════════════════════════════════════════════════════════════════════
 function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, customWords }) {
   const [rounds] = useState(() => {
     const source = customWords || getPhonicsWords(levelId);
-    // ★ 추상 단어 필터링 (big, hot, the, and, run 등 제외)
+    // 1단계: 추상 단어 필터링 (big, hot, the, and 등 제외)
     const pictureable = filterPictureableWords(source);
-    return shuffle(pictureable).slice(0, Math.min(10, pictureable.length));
+    // 2단계: 큐레이션 이미지가 있는 단어만 사용 (커스텀 단어집은 예외)
+    const withImages = customWords
+      ? pictureable  // 커스텀 단어집은 이모지 폴백 허용
+      : pictureable.filter(w => hasCuratedImage(w.word));
+    return shuffle(withImages).slice(0, Math.min(10, withImages.length));
   });
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
@@ -934,35 +938,18 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
   const [feedback, setFeedback] = useState(null);
   const [done, setDone] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [imageUrl, setImageUrl] = useState(null);
-  const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const angela = useAngela();
   const [confettiTrigger, setConfettiTrigger] = useState(0);
 
   const current = rounds[idx];
   const choices = useMemo(() => current ? makeAlphabetChoices(getFirstLetter(current.word)) : [], [current]);
+  const imageUrl = useMemo(() => current ? getCuratedImageUrl(current.word) : null, [current]);
 
-  // ── 단어가 바뀔 때마다 Pexels 이미지 로드 + 힌트 초기화 ──
+  // 단어 바뀔 때 힌트/에러 초기화
   useEffect(() => {
-    if (!current) return;
-    let cancelled = false;
     setShowHint(false);
-    setImageUrl(null);
     setImageError(false);
-    setImageLoading(true);
-
-    fetchWordImage(current.word).then(url => {
-      if (cancelled) return;
-      if (url) {
-        setImageUrl(url);
-      } else {
-        setImageError(true);
-      }
-      setImageLoading(false);
-    });
-
-    return () => { cancelled = true; };
   }, [idx]);
 
   const handleChoice = (letter) => {
@@ -1009,7 +996,6 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
     return <FinishScreen score={score} total={rounds.length} levelId={levelId} onBack={onBack} onExit={onExit} />;
   }
 
-  // ★ 필터링 후 단어가 없을 때 안내
   if (!current) {
     return <EmptyPoolMessage onBack={onBack} message="이 단계엔 그림으로 풀 수 있는 단어가 없어요" />;
   }
@@ -1035,7 +1021,7 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
         textAlign: "center", marginBottom: 16,
         position: "relative"
       }}>
-        {/* 💡 힌트 버튼 (우측 상단) */}
+        {/* 💡 힌트 버튼 */}
         {!showHint && feedback === null && (
           <button
             onClick={handleHint}
@@ -1055,22 +1041,16 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
           </button>
         )}
 
-        {/* 이미지 영역 (Pexels 또는 이모지 폴백) */}
+        {/* 이미지 영역 */}
         <div style={{
-          width: "100%", maxWidth: 280, height: 220,
+          width: "100%", maxWidth: 320, height: 240,
           margin: "0 auto 14px",
           borderRadius: 16, overflow: "hidden",
           background: "rgba(255,255,255,0.6)",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
         }}>
-          {imageLoading && (
-            <div style={{ fontSize: 13, color: T.textMid, fontWeight: 700 }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🖼️</div>
-              그림 불러오는 중...
-            </div>
-          )}
-          {!imageLoading && imageUrl && !imageError && (
+          {imageUrl && !imageError ? (
             <img
               src={imageUrl}
               alt={current.word}
@@ -1080,8 +1060,8 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
                 objectFit: "cover", display: "block"
               }}
             />
-          )}
-          {!imageLoading && (imageError || !imageUrl) && (
+          ) : (
+            // 이모지 폴백 (커스텀 단어집이거나 이미지 로드 실패 시)
             <div style={{ fontSize: 130, lineHeight: 1 }}>{current.emoji}</div>
           )}
         </div>
@@ -1105,7 +1085,7 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
           </div>
         )}
 
-        {/* 정답 시: 전체 단어 + 한글 뜻 */}
+        {/* 정답 시: 단어 + 한글 뜻 */}
         {feedback === "correct" && (
           <div style={{ fontSize: 26, fontWeight: 900, color: T.green, marginTop: 10 }}>
             {current.word} <span style={{ fontSize: 16, opacity: 0.85 }}>({current.ko})</span>
@@ -1137,7 +1117,6 @@ function PictureLetterGame({ studentName, levelId, gameId, onBack, onExit, custo
     </div>
   );
 }
-
 
 // ══════════════════════════════════════════════════════════════════════════
 //   GAME 5: 🧩 소리 듣고 단어 만들기 (c-a-t 순서대로)
