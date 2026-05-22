@@ -31,6 +31,48 @@ function speak(text) {
   }
 }
 
+// ── Angela 캐릭터 컴포넌트 ──────────────────────────────────────────────────
+// 게임 상태에 따라 다른 표정을 보여줍니다
+function AngelaCharacter({ state = "thinking", size = 120, style = {} }) {
+  // state: "thinking" | "happy" | "oops"
+  const images = {
+    thinking: "/angela/angela-think.png",
+    happy: "/angela/angela-happy.png",
+    oops: "/angela/angela-oops.png",
+  };
+
+  const animations = {
+    thinking: "angela-float 2s ease-in-out infinite",
+    happy: "angela-celebrate 0.6s ease-out",
+    oops: "angela-oops 0.5s ease-out",
+  };
+
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        animation: animations[state] || animations.thinking,
+        ...style,
+      }}
+    >
+      <img
+        src={images[state] || images.thinking}
+        alt="Angela"
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.15))",
+        }}
+      />
+    </div>
+  );
+}
+
 // (T는 ./theme 에서 import — 자체 정의 제거하여 디자인 통일)
 
 // ── SSR 안전 유틸 ──────────────────────────────────────────────────────────
@@ -358,6 +400,14 @@ export function DailyChallenge({ name, setStudents, onExit }) {
             <div key={i} style={{flex:1,height:5,borderRadius:3,background:i<round?"rgba(255,255,255,0.9)":i===round?"rgba(255,255,255,0.6)":"rgba(255,255,255,0.25)"}} />
           ))}
         </div>
+      </div>
+
+      {/* Angela 캐릭터 - 상태에 따라 표정 변경 */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
+        <AngelaCharacter 
+          state={answered ? (picked === q.ansIdx ? "happy" : "oops") : "thinking"}
+          size={140}
+        />
       </div>
 
       {/* 문제 */}
@@ -858,6 +908,22 @@ export function WordRelay({ name, setStudents, onExit }) {
       </div>
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:14,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/chain.length)*100}%`,background:T.teal,borderRadius:3,transition:"width 0.3s"}}/>
+      </div>
+
+      {/* Angela 캐릭터 - 콤보 상태 반영 */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <AngelaCharacter 
+          state={answered ? (picked === q.ansIdx ? "happy" : "oops") : "thinking"}
+          size={combo >= 5 ? 140 : 120}
+          style={{
+            transition: "all 0.3s ease-out",
+            filter: combo >= 10 
+              ? "drop-shadow(0 0 20px rgba(255,100,100,0.6)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+              : combo >= 5
+              ? "drop-shadow(0 0 15px rgba(255,200,0,0.5)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+              : "drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+          }}
+        />
       </div>
 
       {/* 릴레이 연결 표시 */}
@@ -1396,6 +1462,15 @@ export function PictureWordGame({ name, setStudents, onExit }) {
       <div style={{height:9,background:T.border,borderRadius:T.radiusFull,marginBottom:16,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/questions.length)*100}%`,background:`linear-gradient(90deg,${mode==="en"?T.accent:T.green},${mode==="en"?T.purple:T.teal})`,borderRadius:T.radiusFull,transition:"width 0.4s cubic-bezier(.34,1.56,.64,1)"}}/>
       </div>
+
+      {/* Angela 캐릭터 - 정답/오답 반응 */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <AngelaCharacter 
+          state={answered ? (picked === ansIdx ? "happy" : "oops") : "thinking"}
+          size={120}
+        />
+      </div>
+
       <Card key={round} style={{marginBottom:16,textAlign:"center",padding:"28px 16px 32px",background:mode==="en"?T.accentLight:T.greenLight,animation:"fade-in-up 0.35s ease-out",position:"relative",overflow:"hidden"}}>
         {/* 은은한 배경 데코 */}
         <div style={{position:"absolute",top:-30,right:-30,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,0.4)",pointerEvents:"none"}}/>
@@ -1929,4 +2004,31 @@ export function DictationGame({ name, setStudents, onExit }) {
       )}
     </div>
   );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Angela Character Animations
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Angela thinking - 부드러운 떠다니기 */
+@keyframes angela-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Angela happy - 환호! */
+@keyframes angela-celebrate {
+  0% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.15) rotate(-5deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
+  75% { transform: scale(1.15) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Angela oops - 갸우뚱 */
+@keyframes angela-oops {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-4px) rotate(-3deg); }
+  50% { transform: translateX(4px) rotate(3deg); }
+  75% { transform: translateX(-4px) rotate(-2deg); }
 }
