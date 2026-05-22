@@ -274,3 +274,80 @@ body.shake-active.shake-hard {
 .golden-glow-active {
   animation: golden-glow 1s ease-in-out infinite;
 }
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*   ✨ 전역 마이크로 인터랙션 (버튼/카드 살아나게)                      */
+/*   - 외부 라이브러리 없이 CSS만으로                                   */
+/*   - 게임 코드 수정 없이 모든 버튼에 자동 적용                        */
+/* ══════════════════════════════════════════════════════════════════ */
+
+/* 클릭 가능한 버튼: 누르면 살짝 들어가고, 부드럽게 반응 */
+button:not(:disabled) {
+  transition: transform 0.12s cubic-bezier(.34,1.56,.64,1), box-shadow 0.15s ease, filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent; /* 모바일 탭 시 회색 박스 제거 */
+}
+button:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+/* 마우스 올리면 살짝 떠오르기 (데스크톱만 - 터치기기 제외) */
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    filter: brightness(1.03);
+  }
+}
+
+/* 클릭 가능한 카드(onClick 있는 div)도 누르면 살짝 반응 — cursor:pointer 기준 */
+div[style*="cursor:pointer"]:active,
+div[style*="cursor: pointer"]:active {
+  transform: scale(0.985);
+  transition: transform 0.12s ease;
+}
+
+/* 정답 보기가 초록색으로 바뀔 때 통통 — 정답 버튼 자동 감지 */
+@keyframes answer-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.06); }
+  70% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+/* 새 문제/화면 등장 시 부드럽게 페이드 인 (게임 컨테이너에 적용 가능) */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+/* 별/포인트 숫자 강조용 (선택적 className) */
+@keyframes pop-once {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.pop-once {
+  animation: pop-once 0.35s ease-out;
+}
+
+/* 살랑살랑 떠다니기 (마스코트/아이콘 강조용, 선택적) */
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.float-gentle {
+  animation: float-gentle 2.5s ease-in-out infinite;
+}
+
+/* 부드러운 등장 — 메뉴 카드 한 번에 뜰 때 */
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 접근성: 모션 줄이기 설정한 사용자는 애니메이션 최소화 */
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active { transform: none; }
+  .fade-in-up, .pop-once, .float-gentle { animation: none; }
+}
