@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { T } from "./theme";
 import { getPronunciationStats } from "./studentWords";
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -10,16 +11,7 @@ import { getPronunciationStats } from "./studentWords";
 //   발음 기록이 없으면 숨김.
 // ══════════════════════════════════════════════════════════════════════════
 
-const T = {
-  card: "#ffffff", border: "#dce8ff",
-  accent: "#4f8ef7", accentLight: "#e8f0ff",
-  green: "#22c55e", greenLight: "#dcfce7",
-  yellow: "#f59e0b", yellowLight: "#fef3c7",
-  red: "#ef4444", redLight: "#fee2e2",
-  purple: "#a855f7",
-  text: "#1e293b", textMid: "#64748b", textDim: "#94a3b8",
-  shadow: "0 4px 16px rgba(79,142,247,0.12)",
-};
+// (T는 ./theme 에서 import)
 
 export function PronunciationWidget({ studentName, onStart }) {
   const [stats, setStats] = useState(null);
@@ -47,7 +39,7 @@ export function PronunciationWidget({ studentName, onStart }) {
   return (
     <div onClick={onStart} style={{
       background: `linear-gradient(135deg, ${T.purple} 0%, ${T.accent} 100%)`,
-      borderRadius: 16, padding: "14px 16px", marginBottom: 14,
+      borderRadius: T.radiusLg, padding: "14px 16px", marginBottom: 14,
       color: "white", cursor: "pointer", boxShadow: T.shadow,
       transition: "transform 0.15s",
     }}
@@ -68,7 +60,7 @@ export function PronunciationWidget({ studentName, onStart }) {
         </div>
         <div style={{
           background: "rgba(255,255,255,0.25)",
-          borderRadius: 10, padding: "6px 12px",
+          borderRadius: T.radiusSm, padding: "6px 12px",
           fontSize: 12, fontWeight: 900,
         }}>
           도전 →

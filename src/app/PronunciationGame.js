@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { ALL_WORDS, getWordsByLevel } from "./wordData";
+import { T } from "./theme";
 import { recordPronunciation } from "./studentWords";
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -14,19 +15,7 @@ import { recordPronunciation } from "./studentWords";
 //   - aborted 에러는 lastResult 만들지 않음 (재시도 가능)
 // ══════════════════════════════════════════════════════════════════════════
 
-const T = {
-  bg: "#f0f7ff", card: "#ffffff", border: "#dce8ff",
-  accent: "#4f8ef7", accentLight: "#e8f0ff",
-  green: "#22c55e", greenLight: "#dcfce7",
-  red: "#ef4444", redLight: "#fee2e2",
-  yellow: "#f59e0b", yellowLight: "#fef3c7",
-  orange: "#f97316", orangeLight: "#fff7ed",
-  purple: "#a855f7", purpleLight: "#f3e8ff",
-  pink: "#ec4899", pinkLight: "#fce7f3",
-  text: "#1e293b", textMid: "#64748b", textDim: "#94a3b8",
-  shadow: "0 4px 16px rgba(79,142,247,0.12)",
-  shadowLg: "0 8px 32px rgba(79,142,247,0.18)",
-};
+// (T는 ./theme 에서 import — 자체 정의 제거)
 
 function calcSimilarity(a, b) {
   const s1 = a.toLowerCase().trim().replace(/[^a-z]/g, "");
@@ -336,7 +325,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
           fontWeight: 700, cursor: "pointer", marginBottom: 16,
         }}>← 종료</button>
         <div style={{
-          background: T.yellowLight, borderRadius: 16, padding: 24, textAlign: "center",
+          background: T.yellowLight, borderRadius: T.radiusLg, padding: 24, textAlign: "center",
           marginTop: 40, color: T.text,
         }}>
           <div style={{ fontSize: 56, marginBottom: 12 }}>🎤</div>
@@ -381,12 +370,12 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 420, margin: "0 auto" }}>
           {levels.map(lv => (
             <div key={lv.id} onClick={() => setLevel(lv.id)} style={{
-              background: T.card, borderRadius: 16, padding: 18,
+              background: T.card, borderRadius: T.radiusLg, padding: 18,
               boxShadow: T.shadow, border: `2px solid ${T.border}`,
               display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
             }}>
               <div style={{
-                width: 54, height: 54, borderRadius: 14, background: lv.bg,
+                width: 54, height: 54, borderRadius: T.radius, background: lv.bg,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 28, flexShrink: 0,
               }}>{lv.icon}</div>
@@ -400,7 +389,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
         </div>
 
         <div style={{
-          marginTop: 20, padding: 12, background: T.accentLight, borderRadius: 10,
+          marginTop: 20, padding: 12, background: T.accentLight, borderRadius: T.radiusSm,
           fontSize: 11, color: T.text, textAlign: "center", lineHeight: 1.6,
         }}>
           💡 <strong>크롬(Chrome) 브라우저</strong>에서 가장 잘 작동해요!<br/>
@@ -433,7 +422,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
           <div style={{
             background: avgScore >= 80 ? T.greenLight : avgScore >= 60 ? T.accentLight : T.yellowLight,
             color: avgScore >= 80 ? T.green : avgScore >= 60 ? T.accent : T.yellow,
-            borderRadius: 12, padding: "10px 18px", display: "inline-block",
+            borderRadius: T.radius, padding: "10px 18px", display: "inline-block",
             marginTop: 12, fontSize: 13, fontWeight: 800,
           }}>
             +{Math.round(avgScore / 10)} 포인트 획득!
@@ -448,7 +437,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
             const stars = scoreToStars(r.score);
             return (
               <div key={i} style={{
-                background: T.card, borderRadius: 12, padding: "12px 14px",
+                background: T.card, borderRadius: T.radius, padding: "12px 14px",
                 marginBottom: 6, boxShadow: T.shadow,
                 display: "flex", alignItems: "center", gap: 12,
               }}>
@@ -477,12 +466,12 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
             awardedRef.current = false;
           }} style={{
             flex: 1, background: T.accentLight, color: T.accent,
-            border: "none", borderRadius: 12, padding: "12px",
+            border: "none", borderRadius: T.radius, padding: "12px",
             fontSize: 14, fontWeight: 800, cursor: "pointer",
           }}>🔄 다시</button>
           <button onClick={onExit} style={{
             flex: 1, background: T.accent, color: "white",
-            border: "none", borderRadius: 12, padding: "12px",
+            border: "none", borderRadius: T.radius, padding: "12px",
             fontSize: 14, fontWeight: 800, cursor: "pointer",
           }}>홈으로</button>
         </div>
@@ -505,11 +494,11 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{
             background: T.accentLight, color: T.accent,
-            padding: "3px 8px", borderRadius: 7, fontSize: 10, fontWeight: 800,
+            padding: "3px 8px", borderRadius: 8, fontSize: 10, fontWeight: 800,
           }}>{idx + 1} / {words.length}</span>
           <span style={{
             background: T.yellowLight, color: T.yellow,
-            padding: "3px 8px", borderRadius: 7, fontSize: 10, fontWeight: 800,
+            padding: "3px 8px", borderRadius: 8, fontSize: 10, fontWeight: 800,
           }}>⭐ {totalScore}점</span>
         </div>
       </div>
@@ -525,7 +514,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
 
       {/* 단어 카드 */}
       <div style={{
-        background: T.card, borderRadius: 20, padding: "32px 20px",
+        background: T.card, borderRadius: T.radiusLg, padding: "32px 20px",
         textAlign: "center", marginBottom: 16, boxShadow: T.shadowLg,
       }}>
         <div style={{ fontSize: 12, color: T.textMid, marginBottom: 6, fontWeight: 700 }}>
@@ -539,7 +528,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
         </div>
         <button type="button" onClick={(e) => { e.stopPropagation(); speak(currentWord.en); }} style={{
           background: T.accentLight, color: T.accent, border: "none",
-          borderRadius: 12, padding: "8px 18px", fontSize: 13, fontWeight: 800,
+          borderRadius: T.radius, padding: "8px 18px", fontSize: 13, fontWeight: 800,
           cursor: "pointer",
         }}>
           🔊 먼저 들어보기
@@ -549,7 +538,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
       {/* 결과 카드 또는 마이크 버튼 (둘 중 하나만 보임) */}
       {lastResult ? (
         <div style={{
-          background: T.card, borderRadius: 16, padding: 16,
+          background: T.card, borderRadius: T.radiusLg, padding: 16,
           marginBottom: 16, boxShadow: T.shadow,
           border: `2px solid ${message.color}33`,
         }}>
@@ -571,7 +560,7 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
           </div>
           <div style={{
             background: message.color + "15", color: message.color,
-            borderRadius: 8, padding: "8px 12px",
+            borderRadius: T.radiusSm, padding: "8px 12px",
             fontSize: 13, fontWeight: 800, textAlign: "center",
           }}>
             {message.msg}
@@ -581,14 +570,14 @@ export function PronunciationGame({ name, setStudents, student, onExit, levelId 
             <button type="button" onClick={retry} style={{
               flex: 1,
               background: T.accentLight, color: T.accent, border: "none",
-              borderRadius: 12, padding: 12, fontSize: 13, fontWeight: 800, cursor: "pointer",
+              borderRadius: T.radius, padding: 12, fontSize: 13, fontWeight: 800, cursor: "pointer",
             }}>
               🔄 다시
             </button>
             <button type="button" onClick={next} style={{
               flex: 2,
               background: T.accent, color: "white", border: "none",
-              borderRadius: 12, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer",
+              borderRadius: T.radius, padding: 12, fontSize: 14, fontWeight: 800, cursor: "pointer",
             }}>
               {idx === words.length - 1 ? "🏁 결과 보기" : "다음 단어 →"}
             </button>
