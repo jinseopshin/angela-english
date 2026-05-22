@@ -361,7 +361,7 @@ export function DailyChallenge({ name, setStudents, onExit }) {
       </div>
 
       {/* 문제 */}
-      <Card style={{marginBottom:12,textAlign:"center",padding:"24px 16px",background:T.yellowLight}}>
+      <Card key={round} style={{marginBottom:12,textAlign:"center",padding:"24px 16px",background:T.yellowLight,animation:"fade-in-up 0.35s ease-out"}}>
         <div style={{fontSize:11,color:T.textMid,marginBottom:8,fontWeight:700}}>뜻을 보고 영어 단어를 고르세요</div>
         <div style={{fontSize:38,fontWeight:900,color:T.yellow}}>{q.ko}</div>
         <div style={{fontSize:11,color:T.textMid,marginTop:6}}>{q.cat}</div>
@@ -488,7 +488,7 @@ export function WrongNoteGame({ name, students, setStudents, onExit }) {
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:14,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/wrongWords.length)*100}%`,background:T.red,borderRadius:3,transition:"width 0.3s"}} />
       </div>
-      <Card style={{marginBottom:12,textAlign:"center",padding:"22px 16px",background:T.redLight,border:`1.5px solid ${T.red}30`}}>
+      <Card key={round} style={{marginBottom:12,textAlign:"center",padding:"22px 16px",background:T.redLight,border:`1.5px solid ${T.red}30`,animation:"fade-in-up 0.35s ease-out"}}>
         <div style={{fontSize:11,color:T.red,marginBottom:6,fontWeight:800}}>📝 복습 단어</div>
         <div style={{fontSize:38,fontWeight:900,color:T.red}}>{q.ko}</div>
       </Card>
@@ -600,13 +600,13 @@ export function AnagramGame({ name, setStudents, onExit }) {
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:12,alignItems:"center"}}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <span style={{fontSize:12,fontWeight:700,color:T.purple}}>{round+1}/{questions.length}</span>
-        <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+        <span key={score} style={{fontSize:12,fontWeight:700,color:T.yellow,display:"inline-block",animation:"pop-once 0.35s ease-out"}}>⭐{score}</span>
       </div>
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:14,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/questions.length)*100}%`,background:T.purple,borderRadius:3,transition:"width 0.3s"}}/>
       </div>
 
-      <Card style={{marginBottom:14,textAlign:"center",padding:"20px 16px",background:T.purpleLight}}>
+      <Card key={round} style={{marginBottom:14,textAlign:"center",padding:"20px 16px",background:T.purpleLight,animation:"fade-in-up 0.35s ease-out"}}>
         <div style={{fontSize:11,color:T.purple,fontWeight:800,marginBottom:8}}>철자를 조립해서 단어를 만들어요</div>
         <div style={{fontSize:36,fontWeight:900,color:T.purple}}>{q.ko}</div>
         <div style={{fontSize:11,color:T.textMid,marginTop:6}}>{q.en.length}글자</div>
@@ -841,10 +841,20 @@ export function WordRelay({ name, setStudents, onExit }) {
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {combo>=2&&<span style={{fontSize:11,fontWeight:900,background:comboFlash?T.orange:T.orangeLight,color:T.orange,padding:"3px 8px",borderRadius:8,transition:"all 0.2s"}}>🔥 {combo}콤보!</span>}
+          {combo>=2&&<span className={combo>=10?"rainbow-active":combo>=5?"golden-glow-active":""} style={{
+            fontSize:combo>=10?13:combo>=5?12:11,
+            fontWeight:900,
+            background:combo>=10?`linear-gradient(90deg,${T.red},${T.orange},${T.yellow},${T.green},${T.accent},${T.purple})`:combo>=5?`linear-gradient(135deg,${T.yellow},${T.orange})`:comboFlash?T.orange:T.orangeLight,
+            color:combo>=5?"white":T.orange,
+            padding:combo>=5?"4px 10px":"3px 8px",
+            borderRadius:T.radiusFull,
+            transition:"all 0.2s",
+            transform:comboFlash?"scale(1.15)":"scale(1)",
+            display:"inline-block"
+          }}>{combo>=10?"🌈":combo>=5?"⚡":"🔥"} {combo}콤보!{combo>=10?" 🌈":combo>=5?" ⚡":""}</span>}
           <span style={{fontSize:12,fontWeight:700,color:T.textMid}}>{round+1}/{chain.length}</span>
         </div>
-        <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+        <span key={score} style={{fontSize:12,fontWeight:700,color:T.yellow,display:"inline-block",animation:"pop-once 0.35s ease-out"}}>⭐{score}</span>
       </div>
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:14,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/chain.length)*100}%`,background:T.teal,borderRadius:3,transition:"width 0.3s"}}/>
@@ -860,7 +870,7 @@ export function WordRelay({ name, setStudents, onExit }) {
         </div>
       )}
 
-      <Card style={{marginBottom:12,textAlign:"center",padding:"20px 16px",background:T.tealLight}}>
+      <Card key={round} style={{marginBottom:12,textAlign:"center",padding:"20px 16px",background:T.tealLight,animation:"fade-in-up 0.35s ease-out"}}>
         <div style={{fontSize:11,color:T.teal,fontWeight:800,marginBottom:6}}>
           {prev?`'${prev.en.slice(-1).toUpperCase()}'로 시작하는 단어의 뜻은?`:"첫 번째 단어의 뜻은?"} <span style={{color:T.accent,fontWeight:800}}>(단어 탭하면 발음!)</span>
         </div>
@@ -1173,7 +1183,7 @@ export function WordWorldRPG({ name, setStudents, onExit }) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
           <span style={{fontSize:11,fontWeight:700,color:T.textMid}}>World {selectedWorld.id}</span>
-          <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+          <span key={score} style={{fontSize:12,fontWeight:700,color:T.yellow,display:"inline-block",animation:"pop-once 0.35s ease-out"}}>⭐{score}</span>
         </div>
 
         {/* 상태바 */}
@@ -1200,7 +1210,7 @@ export function WordWorldRPG({ name, setStudents, onExit }) {
         </div>
 
         {/* 문제 카드 */}
-        <Card style={{marginBottom:12,textAlign:"center",padding:"18px 14px",background:selectedWorld.bg}}>
+        <Card key={round} style={{marginBottom:12,textAlign:"center",padding:"18px 14px",background:selectedWorld.bg,animation:"fade-in-up 0.35s ease-out"}}>
           <div style={{fontSize:11,fontWeight:800,color:selectedWorld.color,marginBottom:6}}>이 단어의 뜻은? <span style={{color:T.accent,fontWeight:800}}>(단어 탭하면 발음!)</span></div>
           <div
             onClick={()=>speak(q.en)}
@@ -1381,12 +1391,12 @@ export function PictureWordGame({ name, setStudents, onExit }) {
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:12,alignItems:"center"}}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <span style={{fontSize:12,fontWeight:700,color:T.textMid}}>{round+1}/{questions.length}</span>
-        <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+        <span key={score} style={{fontSize:12,fontWeight:700,color:T.yellow,display:"inline-block",animation:"pop-once 0.35s ease-out"}}>⭐{score}</span>
       </div>
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:14,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/questions.length)*100}%`,background:mode==="en"?T.accent:T.green,borderRadius:3,transition:"width 0.3s"}}/>
       </div>
-      <Card style={{marginBottom:14,textAlign:"center",padding:"32px 16px",background:mode==="en"?T.accentLight:T.greenLight}}>
+      <Card key={round} style={{marginBottom:14,textAlign:"center",padding:"32px 16px",background:mode==="en"?T.accentLight:T.greenLight,animation:"fade-in-up 0.35s ease-out"}}>
         <div style={{fontSize:10,color:T.textMid,fontWeight:700,marginBottom:8}}>이 그림의 {mode==="en"?"영어 단어는?":"한글 뜻은?"} <span style={{color:T.accent,fontWeight:800}}>(그림 탭하면 발음!)</span></div>
         <div
           onClick={()=>speak(q.en)}
@@ -1509,7 +1519,7 @@ export function WordMatchLines({ name, setStudents, onExit }) {
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:12,alignItems:"center"}}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <span style={{fontSize:12,fontWeight:700,color:T.purple}}>라운드 {round+1}/{ROUNDS}</span>
-        <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+        <span key={score} style={{fontSize:12,fontWeight:700,color:T.yellow,display:"inline-block",animation:"pop-once 0.35s ease-out"}}>⭐{score}</span>
       </div>
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:14,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(Object.keys(matched).length/PER)*100}%`,background:T.purple,borderRadius:3,transition:"width 0.3s"}}/>
@@ -1873,7 +1883,7 @@ export function DictationGame({ name, setStudents, onExit }) {
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:12,alignItems:"center"}}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <span style={{fontSize:12,fontWeight:700,color:mode==="word"?T.accent:T.purple}}>{round+1}/{questions.length}</span>
-        <span style={{fontSize:12,fontWeight:700,color:T.yellow}}>⭐{score}</span>
+        <span key={score} style={{fontSize:12,fontWeight:700,color:T.yellow,display:"inline-block",animation:"pop-once 0.35s ease-out"}}>⭐{score}</span>
       </div>
       <div style={{height:5,background:T.border,borderRadius:3,marginBottom:20,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${(round/questions.length)*100}%`,background:mode==="word"?T.accent:T.purple,borderRadius:3,transition:"width 0.3s"}}/>
