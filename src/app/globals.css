@@ -389,3 +389,19 @@ div[style*="cursor: pointer"]:active {
   50% { transform: translateX(4px) rotate(3deg); }
   75% { transform: translateX(-4px) rotate(-2deg); }
 }
+
+/* Angela 팝업 애니메이션 - 정답/오답 시 화면 중앙에 등장! */
+@keyframes angela-popup {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
