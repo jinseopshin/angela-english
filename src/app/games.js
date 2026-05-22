@@ -409,14 +409,6 @@ export function DailyChallenge({ name, setStudents, onExit }) {
         </div>
       </div>
 
-      {/* Angela 캐릭터 - 즉시 반응! */}
-      <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
-        <AngelaCharacter 
-          state={angelaState}
-          size={140}
-        />
-      </div>
-
       {/* 문제 */}
       <Card key={round} style={{marginBottom:12,textAlign:"center",padding:"24px 16px",background:T.yellowLight,animation:"fade-in-up 0.35s ease-out"}}>
         <div style={{fontSize:11,color:T.textMid,marginBottom:8,fontWeight:700}}>뜻을 보고 영어 단어를 고르세요</div>
@@ -424,13 +416,32 @@ export function DailyChallenge({ name, setStudents, onExit }) {
         <div style={{fontSize:11,color:T.textMid,marginTop:6}}>{q.cat}</div>
       </Card>
 
-      {/* 보기 */}
+      {/* 보기 위 2개 */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        {q.opts.map((o,idx)=>{
+        {q.opts.slice(0, 2).map((o,idx)=>{
           const isAns=idx===q.ansIdx;
           let bg=T.card,color=T.text,border=T.border;let anim="";
           if (answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
           return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.en}</button>;
+        })}
+      </div>
+
+      {/* Angela - 보기 사이 */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <AngelaCharacter 
+          state={angelaState}
+          size={90}
+        />
+      </div>
+
+      {/* 보기 아래 2개 */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        {q.opts.slice(2, 4).map((o,idx)=>{
+          const realIdx = idx + 2;
+          const isAns=realIdx===q.ansIdx;
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if (answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(realIdx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+          return <button key={realIdx} onClick={()=>pick(realIdx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.en}</button>;
         })}
       </div>
 
@@ -927,22 +938,6 @@ export function WordRelay({ name, setStudents, onExit }) {
         <div style={{height:"100%",width:`${(round/chain.length)*100}%`,background:T.teal,borderRadius:3,transition:"width 0.3s"}}/>
       </div>
 
-      {/* Angela 캐릭터 - 즉시 반응 + 콤보 효과! */}
-      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
-        <AngelaCharacter 
-          state={angelaState}
-          size={combo >= 5 ? 140 : 120}
-          style={{
-            transition: "all 0.3s ease-out",
-            filter: combo >= 10 
-              ? "drop-shadow(0 0 20px rgba(255,100,100,0.6)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
-              : combo >= 5
-              ? "drop-shadow(0 0 15px rgba(255,200,0,0.5)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
-              : "drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
-          }}
-        />
-      </div>
-
       {/* 릴레이 연결 표시 */}
       {prev&&(
         <div style={{background:T.tealLight,borderRadius:10,padding:"8px 12px",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
@@ -983,12 +978,41 @@ export function WordRelay({ name, setStudents, onExit }) {
           >🔊 발음 듣기</button>
         </div>
       </Card>
+
+      {/* 보기 위 2개 */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
-        {q.opts.map((o,idx)=>{
+        {q.opts.slice(0, 2).map((o,idx)=>{
           const isAns=idx===q.ansIdx;
           let bg=T.card,color=T.text,border=T.border;let anim="";
           if(answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
           return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"16px 10px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.ko}</button>;
+        })}
+      </div>
+
+      {/* Angela - 보기 사이 + 콤보 효과 */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <AngelaCharacter 
+          state={angelaState}
+          size={combo >= 5 ? 110 : 90}
+          style={{
+            transition: "all 0.3s ease-out",
+            filter: combo >= 10 
+              ? "drop-shadow(0 0 20px rgba(255,100,100,0.6)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+              : combo >= 5
+              ? "drop-shadow(0 0 15px rgba(255,200,0,0.5)) drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+              : "drop-shadow(0 4px 12px rgba(0,0,0,0.15))"
+          }}
+        />
+      </div>
+
+      {/* 보기 아래 2개 */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        {q.opts.slice(2, 4).map((o,idx)=>{
+          const realIdx = idx + 2;
+          const isAns=realIdx===q.ansIdx;
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if(answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(realIdx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+          return <button key={realIdx} onClick={()=>pick(realIdx)} disabled={answered} style={{padding:"16px 10px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.ko}</button>;
         })}
       </div>
       {answered&&<div><div style={{textAlign:"center",fontSize:14,fontWeight:900,color:picked===q.ansIdx?T.green:T.red,marginBottom:8}}>{picked===q.ansIdx?`✓ 정답! ${combo>=2?"🔥"+combo+"콤보!":""}`:"✗ 정답: "+q.ko}</div><Btn v="primary" size="lg" onClick={next} style={{width:"100%"}}>{round<chain.length-1?"다음 →":"결과 보기"}</Btn></div>}
