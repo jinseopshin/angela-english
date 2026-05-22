@@ -298,6 +298,7 @@ export function DailyChallenge({ name, setStudents, onExit }) {
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState(null);
   const [phase, setPhase] = useState("quiz"); // quiz | result
+  const [angelaState, setAngelaState] = useState("thinking"); // Angela 즉시 반응용
   const awardedRef = useRef(false);
 
   // 오늘 날짜 시드로 고정 단어 5개 (매일 같은 단어)
@@ -366,13 +367,19 @@ export function DailyChallenge({ name, setStudents, onExit }) {
 
   const pick = (idx) => {
     if (answered) return;
+    
+    // 즉시 Angela 상태 변경 (React 상태 업데이트 전)
+    const isCorrect = idx === q.ansIdx;
+    setAngelaState(isCorrect ? "happy" : "oops");
+    
     setPicked(idx);
-    if (idx===q.ansIdx) { setScore(s=>s+1); onCorrect(); }
+    if (isCorrect) { setScore(s=>s+1); onCorrect(); }
     else onWrong();
   };
 
   const next = () => {
     setPicked(null);
+    setAngelaState("thinking"); // Angela 다시 thinking으로
     if (round < dailyWords.length-1) setRound(r=>r+1);
     else setPhase("result");
   };
@@ -402,10 +409,10 @@ export function DailyChallenge({ name, setStudents, onExit }) {
         </div>
       </div>
 
-      {/* Angela 캐릭터 - 상태에 따라 표정 변경 */}
+      {/* Angela 캐릭터 - 즉시 반응! */}
       <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
         <AngelaCharacter 
-          state={answered ? (picked === q.ansIdx ? "happy" : "oops") : "thinking"}
+          state={angelaState}
           size={140}
         />
       </div>
@@ -831,6 +838,7 @@ export function WordRelay({ name, setStudents, onExit }) {
   const [picked, setPicked] = useState(null);
   const [done, setDone] = useState(false);
   const [comboFlash, setComboFlash] = useState(false);
+  const [angelaState, setAngelaState] = useState("thinking"); // Angela 즉시 반응용
   const awardedRef = useRef(false);
 
   // 릴레이: 앞 단어의 마지막 글자로 시작하는 다음 단어 맞추기
@@ -871,8 +879,13 @@ export function WordRelay({ name, setStudents, onExit }) {
 
   const pick=(idx)=>{
     if(answered)return;
+    
+    // 즉시 Angela 상태 변경
+    const isCorrect = idx === q.ansIdx;
+    setAngelaState(isCorrect ? "happy" : "oops");
+    
     setPicked(idx);
-    if(idx===q.ansIdx){
+    if(isCorrect){
       setScore(s=>s+1);
       const nc=combo+1;
       setCombo(nc);
@@ -881,10 +894,14 @@ export function WordRelay({ name, setStudents, onExit }) {
       if(nc>=5) triggerConfetti();  // 5콤보 이상 색종이!
       if(nc>=2){setComboFlash(true);setTimeout(()=>setComboFlash(false),600);}
     } else {setCombo(0);onWrong();}
-    recordWrong(name,q.en,idx===q.ansIdx);
+    recordWrong(name,q.en,isCorrect);
   };
 
-  const next=()=>{setPicked(null);if(round<chain.length-1)setRound(r=>r+1);else setDone(true);};
+  const next=()=>{
+    setPicked(null);
+    setAngelaState("thinking"); // Angela 다시 thinking으로
+    if(round<chain.length-1)setRound(r=>r+1);else setDone(true);
+  };
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,padding:16}}>
@@ -910,10 +927,10 @@ export function WordRelay({ name, setStudents, onExit }) {
         <div style={{height:"100%",width:`${(round/chain.length)*100}%`,background:T.teal,borderRadius:3,transition:"width 0.3s"}}/>
       </div>
 
-      {/* Angela 캐릭터 - 콤보 상태 반영 */}
+      {/* Angela 캐릭터 - 즉시 반응 + 콤보 효과! */}
       <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
         <AngelaCharacter 
-          state={answered ? (picked === q.ansIdx ? "happy" : "oops") : "thinking"}
+          state={angelaState}
           size={combo >= 5 ? 140 : 120}
           style={{
             transition: "all 0.3s ease-out",
@@ -1376,6 +1393,7 @@ export function PictureWordGame({ name, setStudents, onExit }) {
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState(null);
   const [mode, setMode] = useState(null); // null=선택 | "en" | "ko"
+  const [angelaState, setAngelaState] = useState("thinking"); // Angela 즉시 반응용
   const awardedRef = useRef(false);
 
   const questions = useMemo(() => {
@@ -1446,10 +1464,19 @@ export function PictureWordGame({ name, setStudents, onExit }) {
 
   const pick = (idx) => {
     if (answered) return;
+    
+    // 즉시 Angela 상태 변경
+    const isCorrect = idx === ansIdx;
+    setAngelaState(isCorrect ? "happy" : "oops");
+    
     setPicked(idx);
-    if (idx === ansIdx) { setScore(s => s+1); onCorrect(); } else onWrong();
-    recordWrong(name, q.en, idx === ansIdx);
-    setTimeout(() => { setPicked(null); setRound(r => r+1); }, 900);
+    if (isCorrect) { setScore(s => s+1); onCorrect(); } else onWrong();
+    recordWrong(name, q.en, isCorrect);
+    setTimeout(() => { 
+      setPicked(null); 
+      setAngelaState("thinking"); // 다음 문제로
+      setRound(r => r+1); 
+    }, 900);
   };
 
   return (
@@ -1463,10 +1490,10 @@ export function PictureWordGame({ name, setStudents, onExit }) {
         <div style={{height:"100%",width:`${(round/questions.length)*100}%`,background:`linear-gradient(90deg,${mode==="en"?T.accent:T.green},${mode==="en"?T.purple:T.teal})`,borderRadius:T.radiusFull,transition:"width 0.4s cubic-bezier(.34,1.56,.64,1)"}}/>
       </div>
 
-      {/* Angela 캐릭터 - 정답/오답 반응 */}
+      {/* Angela 캐릭터 - 즉시 반응! */}
       <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
         <AngelaCharacter 
-          state={answered ? (picked === ansIdx ? "happy" : "oops") : "thinking"}
+          state={angelaState}
           size={120}
         />
       </div>
