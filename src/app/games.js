@@ -371,9 +371,9 @@ export function DailyChallenge({ name, setStudents, onExit }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
         {q.opts.map((o,idx)=>{
           const isAns=idx===q.ansIdx;
-          let bg=T.card,color=T.text,border=T.border;
-          if (answered){if(isAns){bg=T.green;color="white";border=T.green;}else if(idx===picked){bg=T.red;color="white";border=T.red;}}
-          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s"}}>{o.en}</button>;
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if (answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.en}</button>;
         })}
       </div>
 
@@ -495,9 +495,9 @@ export function WrongNoteGame({ name, students, setStudents, onExit }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
         {q.opts.map((o,idx)=>{
           const isAns=idx===q.ansIdx;
-          let bg=T.card,color=T.text,border=T.border;
-          if(answered){if(isAns){bg=T.green;color="white";border=T.green;}else if(idx===picked){bg=T.red;color="white";border=T.red;}}
-          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s"}}>{o.en}</button>;
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if(answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.en}</button>;
         })}
       </div>
       {answered&&<div><div style={{textAlign:"center",fontSize:14,fontWeight:900,color:picked===q.ansIdx?T.green:T.red,marginBottom:10}}>{picked===q.ansIdx?"✓ 이번엔 맞았어요!":"✗ 정답: "+q.en}</div><Btn v="primary" size="lg" onClick={next} style={{width:"100%"}}>{round<wrongWords.length-1?"다음 →":"결과 보기"}</Btn></div>}
@@ -893,9 +893,9 @@ export function WordRelay({ name, setStudents, onExit }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
         {q.opts.map((o,idx)=>{
           const isAns=idx===q.ansIdx;
-          let bg=T.card,color=T.text,border=T.border;
-          if(answered){if(isAns){bg=T.green;color="white";border=T.green;}else if(idx===picked){bg=T.red;color="white";border=T.red;}}
-          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"16px 10px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s"}}>{o.ko}</button>;
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if(answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"16px 10px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",animation:anim?`${anim} 0.45s ease`:"none"}}>{o.ko}</button>;
         })}
       </div>
       {answered&&<div><div style={{textAlign:"center",fontSize:14,fontWeight:900,color:picked===q.ansIdx?T.green:T.red,marginBottom:8}}>{picked===q.ansIdx?`✓ 정답! ${combo>=2?"🔥"+combo+"콤보!":""}`:"✗ 정답: "+q.ko}</div><Btn v="primary" size="lg" onClick={next} style={{width:"100%"}}>{round<chain.length-1?"다음 →":"결과 보기"}</Btn></div>}
@@ -993,9 +993,9 @@ export function WordTwenty({ name, setStudents, onExit }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
         {q.opts.map((o,idx)=>{
           const isAns=idx===q.ansIdx;
-          let bg=T.card,color=T.text,border=T.border;
-          if(answered){if(isAns){bg=T.green;color="white";border=T.green;}else if(idx===picked){bg=T.red;color="white";border=T.red;}}
-          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"16px 10px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",lineHeight:1.3}}>{o.en}<div style={{fontSize:11,fontWeight:500,opacity:.7,marginTop:2}}>{o.ko}</div></button>;
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if(answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"16px 10px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",lineHeight:1.3,animation:anim?`${anim} 0.45s ease`:"none"}}>{o.en}<div style={{fontSize:11,fontWeight:500,opacity:.7,marginTop:2}}>{o.ko}</div></button>;
         })}
       </div>
       {answered&&<div><div style={{textAlign:"center",fontSize:14,fontWeight:900,color:picked===q.ansIdx?T.green:T.red,marginBottom:8}}>{picked===q.ansIdx?`✓ 정답! ${bonusPts>0?"+"+bonusPts+"보너스!":""}`:"✗ 정답: "+q.en+" ("+q.ko+")"}</div><Btn v="primary" size="lg" onClick={next} style={{width:"100%"}}>{round<questions.length-1?"다음 →":"결과 보기"}</Btn></div>}
@@ -1245,9 +1245,9 @@ export function WordWorldRPG({ name, setStudents, onExit }) {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
           {q.opts.map((o,idx)=>{
             const isAns=idx===q.ansIdx;
-            let bg=T.card,color=T.text,border=T.border;
-            if(answered){if(isAns){bg=T.green;color="white";border=T.green;}else if(idx===picked){bg=T.red;color="white";border=T.red;}}
-            return<button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"15px 8px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",lineHeight:1.3}}>{o.ko}</button>;
+            let bg=T.card,color=T.text,border=T.border;let anim="";
+            if(answered){if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";}else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";}}
+            return<button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"15px 8px",borderRadius:12,border:`2px solid ${border}`,background:bg,color,fontSize:14,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",lineHeight:1.3,animation:anim?`${anim} 0.45s ease`:"none"}}>{o.ko}</button>;
           })}
         </div>
 
@@ -1419,9 +1419,9 @@ export function PictureWordGame({ name, setStudents, onExit }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         {q.opts.map((o,idx) => {
           const isAns = idx === ansIdx;
-          let bg=T.card,color=T.text,border=T.border;
-          if (answered){ if(isAns){bg=T.green;color="white";border=T.green;} else if(idx===picked){bg=T.red;color="white";border=T.red;} }
-          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",lineHeight:1.3}}>
+          let bg=T.card,color=T.text,border=T.border;let anim="";
+          if (answered){ if(isAns){bg=T.green;color="white";border=T.green;anim="answer-pop";} else if(idx===picked){bg=T.red;color="white";border=T.red;anim="wrong-shake";} }
+          return <button key={idx} onClick={()=>pick(idx)} disabled={answered} style={{padding:"18px 10px",borderRadius:13,border:`2px solid ${border}`,background:bg,color,fontSize:15,fontWeight:800,cursor:answered?"default":"pointer",transition:"all 0.2s",lineHeight:1.3,animation:anim?`${anim} 0.45s ease`:"none"}}>
             {mode==="en"?o.en:o.ko}
           </button>;
         })}

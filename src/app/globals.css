@@ -307,9 +307,21 @@ div[style*="cursor: pointer"]:active {
 /* 정답 보기가 초록색으로 바뀔 때 통통 — 정답 버튼 자동 감지 */
 @keyframes answer-pop {
   0% { transform: scale(1); }
-  45% { transform: scale(1.06); }
-  70% { transform: scale(0.98); }
+  30% { transform: scale(1.14); }
+  55% { transform: scale(0.95); }
+  75% { transform: scale(1.04); }
   100% { transform: scale(1); }
+}
+
+/* 오답 버튼 좌우로 부르르 흔들기 */
+@keyframes wrong-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-7px); }
+  30% { transform: translateX(7px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
 }
 
 /* 새 문제/화면 등장 시 부드럽게 페이드 인 (게임 컨테이너에 적용 가능) */
