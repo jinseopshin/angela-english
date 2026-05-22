@@ -234,11 +234,11 @@ export function AISentenceGenerator({ onExit, onSaved }) {
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={selectAll} style={{
               background: T.accentLight, color: T.accent, border: "none",
-              borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer"
+              borderRadius: T.radiusSm, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer"
             }}>전체 선택</button>
             <button onClick={deselectAll} style={{
               background: T.bg, color: T.textMid, border: `1px solid ${T.border}`,
-              borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer"
+              borderRadius: T.radiusSm, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer"
             }}>전체 해제</button>
           </div>
         </div>
@@ -251,14 +251,14 @@ export function AISentenceGenerator({ onExit, onSaved }) {
             <Card key={idx} style={{
               marginBottom: 10,
               border: `2px solid ${isSelected ? T.accent : T.border}`,
-              background: isSelected ? T.card : "#f9fafb",
+              background: isSelected ? T.card : T.bgSoft,
               opacity: isSelected ? 1 : 0.6,
               transition: "all 0.15s"
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 {/* 체크박스 */}
                 <button onClick={() => toggleSelect(idx)} style={{
-                  width: 26, height: 26, borderRadius: 8, border: "none",
+                  width: 26, height: 26, borderRadius: T.radiusSm, border: "none",
                   background: isSelected ? T.accent : T.border,
                   color: "white", fontSize: 14, fontWeight: 900,
                   cursor: "pointer", flexShrink: 0, marginTop: 2
@@ -274,7 +274,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
                     onChange={e => updateItem(idx, "english", e.target.value)}
                     style={{
                       width: "100%", boxSizing: "border-box",
-                      padding: "7px 10px", borderRadius: 8,
+                      padding: "7px 10px", borderRadius: T.radiusSm,
                       border: `1px solid ${T.border}`,
                       fontSize: 14, fontWeight: 700, color: T.text,
                       marginBottom: 5, outline: "none"
@@ -286,7 +286,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
                     onChange={e => updateItem(idx, "korean", e.target.value)}
                     style={{
                       width: "100%", boxSizing: "border-box",
-                      padding: "6px 10px", borderRadius: 8,
+                      padding: "6px 10px", borderRadius: T.radiusSm,
                       border: `1px solid ${T.border}`,
                       fontSize: 12, color: T.textMid,
                       marginBottom: 6, outline: "none"
@@ -299,7 +299,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
                       value={item.difficulty || difficulty}
                       onChange={e => updateItem(idx, "difficulty", e.target.value)}
                       style={{
-                        padding: "3px 8px", borderRadius: 6,
+                        padding: "3px 8px", borderRadius: 8,
                         border: `1px solid ${diffInfo.color}`,
                         background: diffInfo.bg, color: diffInfo.color,
                         fontSize: 10, fontWeight: 700, cursor: "pointer"
@@ -327,7 +327,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
 
         {error && (
           <div style={{
-            padding: "10px 14px", background: T.redLight, borderRadius: 10,
+            padding: "10px 14px", background: T.redLight, borderRadius: T.radiusSm,
             marginBottom: 10, fontSize: 12, color: T.red, fontWeight: 700
           }}>
             ⚠️ {error}
@@ -358,7 +358,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
       {/* 설명 배너 */}
       <div style={{
         background: `linear-gradient(135deg,${T.purple},${T.accent})`,
-        borderRadius: 14, padding: "14px 16px", color: "white", marginBottom: 16
+        borderRadius: T.radius, padding: "14px 16px", color: "white", marginBottom: 16
       }}>
         <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 4 }}>
           ✨ Claude AI가 학습 문장을 만들어드려요
@@ -384,7 +384,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
             placeholder="예: 동물에 관한 문장, 인사 표현..."
             style={{
               width: "100%", boxSizing: "border-box",
-              padding: "10px 12px", borderRadius: 10,
+              padding: "10px 12px", borderRadius: T.radiusSm,
               border: `1.5px solid ${error && !topic.trim() ? T.red : T.border}`,
               fontSize: 13, outline: "none"
             }}
@@ -398,7 +398,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {TOPIC_PRESETS.map(p => (
                 <button key={p.value} onClick={() => setTopic(p.value)} style={{
-                  padding: "6px 10px", borderRadius: 9,
+                  padding: "6px 10px", borderRadius: T.radiusSm,
                   border: `1px solid ${topic === p.value ? T.accent : T.border}`,
                   background: topic === p.value ? T.accentLight : T.bg,
                   color: topic === p.value ? T.accent : T.textMid,
@@ -418,7 +418,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.textMid, marginBottom: 6 }}>학년</div>
             <select value={grade} onChange={e => setGrade(e.target.value)} style={{
-              width: "100%", padding: "10px 10px", borderRadius: 9,
+              width: "100%", padding: "10px 10px", borderRadius: T.radiusSm,
               border: `1.5px solid ${T.border}`, fontSize: 13, boxSizing: "border-box"
             }}>
               {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
@@ -427,7 +427,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: T.textMid, marginBottom: 6 }}>난이도</div>
             <select value={difficulty} onChange={e => setDifficulty(e.target.value)} style={{
-              width: "100%", padding: "10px 10px", borderRadius: 9,
+              width: "100%", padding: "10px 10px", borderRadius: T.radiusSm,
               border: `1.5px solid ${T.border}`, fontSize: 13, boxSizing: "border-box"
             }}>
               <option value="easy">🟢 쉬움 (단순 SVO)</option>
@@ -445,7 +445,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
           <div style={{ display: "flex", gap: 8 }}>
             {[3, 5, 10, 15].map(n => (
               <button key={n} onClick={() => setCount(n)} style={{
-                flex: 1, padding: "9px 6px", borderRadius: 9,
+                flex: 1, padding: "9px 6px", borderRadius: T.radiusSm,
                 border: `1.5px solid ${count === n ? T.accent : T.border}`,
                 background: count === n ? T.accentLight : T.bg,
                 fontSize: 13, fontWeight: 800, cursor: "pointer",
@@ -468,7 +468,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
             placeholder="예: cat, dog 단어 포함해줘"
             style={{
               width: "100%", boxSizing: "border-box",
-              padding: "9px 12px", borderRadius: 9,
+              padding: "9px 12px", borderRadius: T.radiusSm,
               border: `1.5px solid ${T.border}`, fontSize: 12, outline: "none"
             }}
           />
@@ -477,7 +477,7 @@ export function AISentenceGenerator({ onExit, onSaved }) {
 
       {error && (
         <div style={{
-          padding: "10px 14px", background: T.redLight, borderRadius: 10,
+          padding: "10px 14px", background: T.redLight, borderRadius: T.radiusSm,
           marginBottom: 12, fontSize: 12, color: T.red, fontWeight: 700
         }}>
           ⚠️ {error}
