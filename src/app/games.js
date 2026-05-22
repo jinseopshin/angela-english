@@ -299,6 +299,7 @@ export function DailyChallenge({ name, setStudents, onExit }) {
   const [picked, setPicked] = useState(null);
   const [phase, setPhase] = useState("quiz"); // quiz | result
   const [angelaState, setAngelaState] = useState("thinking"); // Angela 즉시 반응용
+  const [showAngela, setShowAngela] = useState(false); // Angela 팝업 표시 여부
   const awardedRef = useRef(false);
 
   // 오늘 날짜 시드로 고정 단어 5개 (매일 같은 단어)
@@ -368,9 +369,13 @@ export function DailyChallenge({ name, setStudents, onExit }) {
   const pick = (idx) => {
     if (answered) return;
     
-    // 즉시 Angela 상태 변경 (React 상태 업데이트 전)
+    // 즉시 Angela 상태 변경 + 팝업 표시
     const isCorrect = idx === q.ansIdx;
     setAngelaState(isCorrect ? "happy" : "oops");
+    setShowAngela(true);
+    
+    // 0.8초 후 Angela 자동 사라짐
+    setTimeout(() => setShowAngela(false), 800);
     
     setPicked(idx);
     if (isCorrect) { setScore(s=>s+1); onCorrect(); }
@@ -435,11 +440,12 @@ export function DailyChallenge({ name, setStudents, onExit }) {
         })}
       </div>
 
-      {/* Angela 팝업 - 정답/오답 시에만 화면 중앙에 등장! */}
-      {answered && (
+      {/* Angela 팝업 - 0.8초만 표시 후 자동 사라짐 */}
+      {showAngela && (
         <div style={{
           position:"fixed",
-          top:0,left:0,right:0,bottom:0,
+          top:"25%", // 상단 1/4 지점
+          left:0,right:0,
           display:"flex",
           alignItems:"center",
           justifyContent:"center",
@@ -448,7 +454,7 @@ export function DailyChallenge({ name, setStudents, onExit }) {
         }}>
           <AngelaCharacter 
             state={angelaState}
-            size={180}
+            size={220}
             style={{
               animation: "angela-popup 0.6s cubic-bezier(.34,1.56,.64,1)"
             }}
@@ -861,6 +867,7 @@ export function WordRelay({ name, setStudents, onExit }) {
   const [done, setDone] = useState(false);
   const [comboFlash, setComboFlash] = useState(false);
   const [angelaState, setAngelaState] = useState("thinking"); // Angela 즉시 반응용
+  const [showAngela, setShowAngela] = useState(false); // Angela 팝업 표시 여부
   const awardedRef = useRef(false);
 
   // 릴레이: 앞 단어의 마지막 글자로 시작하는 다음 단어 맞추기
@@ -902,9 +909,13 @@ export function WordRelay({ name, setStudents, onExit }) {
   const pick=(idx)=>{
     if(answered)return;
     
-    // 즉시 Angela 상태 변경
+    // 즉시 Angela 상태 변경 + 팝업 표시
     const isCorrect = idx === q.ansIdx;
     setAngelaState(isCorrect ? "happy" : "oops");
+    setShowAngela(true);
+    
+    // 0.8초 후 Angela 자동 사라짐
+    setTimeout(() => setShowAngela(false), 800);
     
     setPicked(idx);
     if(isCorrect){
@@ -1011,11 +1022,12 @@ export function WordRelay({ name, setStudents, onExit }) {
         })}
       </div>
 
-      {/* Angela 팝업 - 정답/오답 시 + 콤보 효과! */}
-      {answered && (
+      {/* Angela 팝업 - 0.8초만 표시 + 콤보 효과! */}
+      {showAngela && (
         <div style={{
           position:"fixed",
-          top:0,left:0,right:0,bottom:0,
+          top:"25%",
+          left:0,right:0,
           display:"flex",
           alignItems:"center",
           justifyContent:"center",
@@ -1024,7 +1036,7 @@ export function WordRelay({ name, setStudents, onExit }) {
         }}>
           <AngelaCharacter 
             state={angelaState}
-            size={combo >= 5 ? 200 : 180}
+            size={combo >= 5 ? 240 : 220}
             style={{
               animation: "angela-popup 0.6s cubic-bezier(.34,1.56,.64,1)",
               filter: combo >= 10 
@@ -1440,6 +1452,7 @@ export function PictureWordGame({ name, setStudents, onExit }) {
   const [picked, setPicked] = useState(null);
   const [mode, setMode] = useState(null); // null=선택 | "en" | "ko"
   const [angelaState, setAngelaState] = useState("thinking"); // Angela 즉시 반응용
+  const [showAngela, setShowAngela] = useState(false); // Angela 팝업 표시 여부
   const awardedRef = useRef(false);
 
   const questions = useMemo(() => {
@@ -1511,9 +1524,13 @@ export function PictureWordGame({ name, setStudents, onExit }) {
   const pick = (idx) => {
     if (answered) return;
     
-    // 즉시 Angela 상태 변경
+    // 즉시 Angela 상태 변경 + 팝업 표시
     const isCorrect = idx === ansIdx;
     setAngelaState(isCorrect ? "happy" : "oops");
+    setShowAngela(true);
+    
+    // 0.8초 후 Angela 자동 사라짐
+    setTimeout(() => setShowAngela(false), 800);
     
     setPicked(idx);
     if (isCorrect) { setScore(s => s+1); onCorrect(); } else onWrong();
@@ -1606,11 +1623,12 @@ export function PictureWordGame({ name, setStudents, onExit }) {
         })}
       </div>
 
-      {/* Angela 팝업 - 정답/오답 시에만! */}
-      {answered && (
+      {/* Angela 팝업 - 0.8초만 표시 */}
+      {showAngela && (
         <div style={{
           position:"fixed",
-          top:0,left:0,right:0,bottom:0,
+          top:"25%",
+          left:0,right:0,
           display:"flex",
           alignItems:"center",
           justifyContent:"center",
@@ -1619,7 +1637,7 @@ export function PictureWordGame({ name, setStudents, onExit }) {
         }}>
           <AngelaCharacter 
             state={angelaState}
-            size={180}
+            size={220}
             style={{
               animation: "angela-popup 0.6s cubic-bezier(.34,1.56,.64,1)"
             }}
