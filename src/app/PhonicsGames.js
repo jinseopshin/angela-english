@@ -1453,6 +1453,7 @@ function LetterWriteGame({ studentName, levelId, gameId, onBack, onExit, letterP
   const guideRefs = useRef([]);
   const [strokeIdx, setStrokeIdx] = useState(0);
   const [inked, setInked] = useState("");
+  const [completedInk, setCompletedInk] = useState([]); // 완성된 획들(화면에 계속 남김)
   const [msg, setMsg] = useState("초록 점에서 시작해 화살표 방향으로 그어요");
   const [msgKind, setMsgKind] = useState("idle"); // idle|ok|warn|done|info
   const drawing = useRef(false);
@@ -1467,7 +1468,7 @@ function LetterWriteGame({ studentName, levelId, gameId, onBack, onExit, letterP
   // 글자 바뀌면 초기화
   useEffect(() => {
     cancelAnim();
-    setStrokeIdx(0); setInked(""); drawing.current = false; pts.current = [];
+    setStrokeIdx(0); setInked(""); setCompletedInk([]); drawing.current = false; pts.current = [];
     setMsg("초록 점에서 시작해 화살표 방향으로 그어요"); setMsgKind("idle");
     speakLetterName(letter);
   }, [idx]);
@@ -1528,6 +1529,11 @@ function LetterWriteGame({ studentName, levelId, gameId, onBack, onExit, letterP
     if (!drawing.current) return;
     drawing.current = false;
     if (coverage() >= PASS) {
+      // 완성된 획은 가이드 경로(반듯한 모양)로 화면에 남김
+      const path = guideRefs.current[strokeIdx];
+      const finishedD = path ? path.getAttribute("d") : inked;
+      setCompletedInk(prev => [...prev, finishedD]);
+      setInked("");
       if (strokeIdx < strokes.length - 1) {
         playClick(); setStrokeIdx(i => i + 1);
         setMsg(`좋아요! 다음 획 ${strokeIdx + 2}번`); setMsgKind("ok");
@@ -1579,7 +1585,7 @@ function LetterWriteGame({ studentName, levelId, gameId, onBack, onExit, letterP
     animRef.current = requestAnimationFrame(step);
   }
   function retry() {
-    cancelAnim(); setStrokeIdx(0); setInked("");
+    cancelAnim(); setStrokeIdx(0); setInked(""); setCompletedInk([]);
     setMsg("초록 점에서 시작해 화살표 방향으로 그어요"); setMsgKind("idle");
   }
 
@@ -1669,6 +1675,11 @@ function LetterWriteGame({ studentName, levelId, gameId, onBack, onExit, letterP
               </g>
             );
           })}
+
+          {completedInk.map((d, i) => (
+            <path key={`done-${i}`} d={d} fill="none" stroke={T.green}
+              strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
 
           <path d={inked} fill="none" stroke={inkColor} strokeWidth="14"
             strokeLinecap="round" strokeLinejoin="round" />
