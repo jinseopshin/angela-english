@@ -1766,11 +1766,13 @@ export function WordMatchLines({ name, setStudents, onExit }) {
       setMatched(m => ({...m, [selLeft]: idx}));
       setScore(s => s+1);
       setSelLeft(null);
+      onCorrect();
       setAngelaState("happy");
       setShowAngela(true);
       setTimeout(() => setShowAngela(false), 600);
     } else {
       setWrong({left:selLeft, right:idx});
+      onWrong();
       setAngelaState("oops");
       setShowAngela(true);
       setTimeout(() => setShowAngela(false), 800);
@@ -1993,6 +1995,7 @@ export function WordSearchGame({ name, setStudents, onExit }) {
     const hit=placed.find(p=>p.word===word&&!found.includes(p.word));
     if (hit) {
       setFound(f=>[...f,hit.word]);
+      onCorrect();
       setAngelaState("happy");
       setShowAngela(true);
       setTimeout(() => setShowAngela(false), 800);
