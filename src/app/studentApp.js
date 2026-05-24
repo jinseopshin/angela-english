@@ -10,9 +10,9 @@ import {
   BadgeDisplay, BadgeCelebration, getEarnedBadges,
   NoticeBanner, StudentGoalWidget, SentenceGame,
   ScheduleBanner,
-  WordHomeworkBanner,
   CustomExamBanner, CustomExamPlay
 } from "./features";
+import { WordHomeworkBanner } from "./WordHomework";
 import {
   MemoryCardGame, DailyChallenge, WrongNoteGame, AnagramGame,
   TypingRace, WordRelay, WordTwenty, WordWorldRPG,

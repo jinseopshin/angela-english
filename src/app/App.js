@@ -10,10 +10,12 @@ import {
   StudentDetailReport,
   StatsDashboard, StudentDetailModal,
   computeStudentStats, getLevel, LEVEL_INFO,
-  WordHomeworkManager, WordHomeworkPrint, WordHomeworkBanner,
-  getActiveHomeworkWords, updateWordMastery,
   CustomExamManager, CustomExamPrint, CustomExamBanner, CustomExamPlay
 } from "./features";
+import {
+  WordHomeworkManager, WordHomeworkPrint, WordHomeworkBanner,
+  getActiveHomeworkWords, updateWordMastery
+} from "./WordHomework";
 import { AttendanceManager } from "./AttendanceManager";
 import {
   MemoryCardGame, DailyChallenge, WrongNoteGame, AnagramGame,

@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { ALL_WORDS, WORD_LEVELS, getWordsByLevel } from "./wordData";
 import { recordWordEncounter, addToWordbook, removeFromWordbook, isInWordbook } from "./studentWords";
-import { updateWordMastery } from "./features";
+import { updateWordMastery } from "./WordHomework";
 import {
   T, MARKS, uid, shuffle, speak,
   Btn, Tag, Card, Input, saveStudentRecord
