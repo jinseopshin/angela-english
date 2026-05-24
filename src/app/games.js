@@ -2003,7 +2003,8 @@ export function WordSearchGame({ name, setStudents, onExit }) {
   };
 
   const selected = getSelected();
-  const CELL = 30;
+  // 셀 크기: 화면 폭에 맞춰 자동 조절 (작은 폰 32px ~ 큰 화면 54px)
+  const CELL = `clamp(32px, calc((100vw - 36px) / ${SIZE}), 54px)`;
 
   if (done) {
     const pts = found.length * 15;
@@ -2022,6 +2023,7 @@ export function WordSearchGame({ name, setStudents, onExit }) {
 
   return (
     <div style={{minHeight:"100vh",background:T.bg,padding:14}}>
+      <div style={{maxWidth:640,margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
         <Btn v="ghost" size="sm" onClick={onExit}>← 종료</Btn>
         <span style={{fontSize:12,fontWeight:700,color:T.green}}>✓ {found.length}/{placed.length}</span>
@@ -2029,9 +2031,9 @@ export function WordSearchGame({ name, setStudents, onExit }) {
       </div>
 
       {/* 찾을 단어 목록 */}
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12,justifyContent:"center"}}>
         {placed.map(p=>(
-          <span key={p.word} style={{fontSize:12,fontWeight:800,padding:"3px 10px",borderRadius:8,
+          <span key={p.word} style={{fontSize:13,fontWeight:800,padding:"5px 12px",borderRadius:8,
             background:found.includes(p.word)?T.green:T.card,
             color:found.includes(p.word)?"white":T.text,
             border:`1px solid ${found.includes(p.word)?T.green:T.border}`,
@@ -2042,10 +2044,10 @@ export function WordSearchGame({ name, setStudents, onExit }) {
       </div>
 
       {/* 그리드 */}
-      <div style={{overflowX:"auto",marginBottom:12}}>
-        <div style={{display:"inline-block",userSelect:"none",touchAction:"none"}}>
+      <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+        <div style={{display:"inline-block",userSelect:"none",touchAction:"none",margin:"0 auto"}}>
           {grid.map((row,r)=>(
-            <div key={r} style={{display:"flex"}}>
+            <div key={r} style={{display:"flex",justifyContent:"center"}}>
               {row.map((ch,c)=>{
                 const key=`${r},${c}`;
                 const isSel=selected.has(key);
@@ -2065,11 +2067,11 @@ export function WordSearchGame({ name, setStudents, onExit }) {
                     data-cell={`${r},${c}`}
                     style={{
                       width:CELL,height:CELL,display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize:13,fontWeight:800,borderRadius:6,margin:1,cursor:"pointer",
+                      fontSize:"clamp(15px, 3.5vw, 24px)",fontWeight:800,borderRadius:8,margin:2,cursor:"pointer",
                       background:isFound?T.green:isSel?T.purple:T.card,
                       color:isFound||isSel?"white":T.text,
-                      border:`1px solid ${isFound?T.green:isSel?T.purpleDark||T.purple:T.border}`,
-                      transition:"background 0.1s"
+                      border:`2px solid ${isFound?T.green:isSel?T.purpleDark||T.purple:T.border}`,
+                      transition:"background 0.1s",boxSizing:"border-box"
                     }}>{ch}</div>
                 );
               })}
@@ -2079,12 +2081,13 @@ export function WordSearchGame({ name, setStudents, onExit }) {
       </div>
 
       {/* 뜻 힌트 */}
-      <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,justifyContent:"center"}}>
         {placed.map(p=>(
-          <span key={p.word} style={{fontSize:10,color:T.textMid,padding:"2px 7px",borderRadius:6,background:T.bg,border:`1px solid ${T.border}`}}>
+          <span key={p.word} style={{fontSize:11,color:T.textMid,padding:"3px 8px",borderRadius:6,background:T.bg,border:`1px solid ${T.border}`}}>
             {p.original.en} = {p.original.ko}
           </span>
         ))}
+      </div>
       </div>
 
       {showAngela && (
