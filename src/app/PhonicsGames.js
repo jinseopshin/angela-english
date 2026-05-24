@@ -12,6 +12,7 @@ import {
 import { useAngela, getComboReaction, getFinishReaction, FullScreenConfetti } from "./AngelaMascot";
 import { PhonicsClassMode } from "./PhonicsClassMode";
 import { getCuratedImageUrl, hasCuratedImage, preloadImages } from "./phonicsImages";
+import { getLetterStrokes, GUIDE_LINES } from "./letterStrokes";
 
 // ══════════════════════════════════════════════════════════════════════════
 //   🔤 PhonicsGames.js v2.0 — 유치부 파닉스 게임 5종
@@ -402,6 +403,7 @@ function PhonicsGameMenu({ studentName, levelId, onBack, onExit }) {
       { id: "cvc-blank",       icon: "🔤", label: "CVC 빈칸 채우기",     desc: "c_t 보고 가운데 모음 고르기", levels: ["cvc"] },
       { id: "picture-letter",  icon: "🖼️", label: "그림 보고 첫글자",   desc: "그림 보고 알파벳 고르기", levels: ["alphabet", "cvc", "blends", "sight"] },
       { id: "build-word",      icon: "🧩", label: "단어 만들기",        desc: "소리 듣고 순서대로 클릭", levels: ["cvc", "magic-e", "blends"] },
+      { id: "letter-write",    icon: "✍️", label: "글자 따라쓰기",      desc: "획순 따라 손가락으로 쓰기", levels: ["alphabet", "cvc", "magic-e", "blends", "sight"] },
     ];
     return all.filter(g => g.levels.includes(levelId));
   }, [levelId]);
@@ -513,6 +515,7 @@ function PhonicsGameRunner({ studentName, levelId, gameId, onBack, onExit }) {
     case "cvc-blank":       return <CVCBlankGame {...props} />;
     case "picture-letter":  return <PictureLetterGame {...props} />;
     case "build-word":      return <BuildWordGame {...props} />;
+    case "letter-write":    return <LetterWriteGame {...props} />;
     default: return <div>지원하지 않는 게임</div>;
   }
 }
@@ -1387,6 +1390,281 @@ function BuildWordGame({ studentName, levelId, gameId, onBack, onExit, customWor
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//   GAME 6: ✍️ 글자 따라쓰기 (대소문자 짝, 획순/방향 안내 + 4선지)
+// ══════════════════════════════════════════════════════════════════════════
+const PAIRS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(c => [c, c.toLowerCase()]);
+const PAIRS_PER_SESSION = 5; // 한 세션에 5쌍(=10글자)
+
+function speakLetterName(ch) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(ch);
+  u.lang = "en-US"; u.rate = 0.8;
+  window.speechSynthesis.speak(u);
+}
+
+function LetterWriteGame({ studentName, levelId, gameId, onBack, onExit }) {
+  // 세션 글자 목록: 대소문자 짝을 펼쳐서 [A,a,B,b,...] 순서
+  const [letters] = useState(() => {
+    const start = Math.floor(Math.random() * (PAIRS.length - PAIRS_PER_SESSION + 1));
+    const chosen = PAIRS.slice(start, start + PAIRS_PER_SESSION);
+    return chosen.flat();
+  });
+
+  const [idx, setIdx] = useState(0);
+  const [done, setDone] = useState(false);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const angela = useAngela();
+
+  const letter = letters[idx];
+  const strokes = useMemo(() => getLetterStrokes(letter) || [], [letter]);
+  const g = GUIDE_LINES;
+
+  // 획 추적 상태
+  const svgRef = useRef(null);
+  const guideRefs = useRef([]);
+  const [strokeIdx, setStrokeIdx] = useState(0);
+  const [inked, setInked] = useState("");
+  const [msg, setMsg] = useState("초록 점에서 시작해 화살표 방향으로 그어요");
+  const [msgKind, setMsgKind] = useState("idle"); // idle|ok|warn|done|info
+  const drawing = useRef(false);
+  const pts = useRef([]);
+  const covered = useRef([]);
+  const totalSamples = useRef(0);
+  const animRef = useRef(null);
+  const [pacer, setPacer] = useState(null);
+
+  const TOL = 30, PASS = 0.6;
+
+  // 글자 바뀌면 초기화
+  useEffect(() => {
+    cancelAnim();
+    setStrokeIdx(0); setInked(""); drawing.current = false; pts.current = [];
+    setMsg("초록 점에서 시작해 화살표 방향으로 그어요"); setMsgKind("idle");
+    speakLetterName(letter);
+  }, [idx]);
+
+  // 획 바뀌면 샘플 초기화
+  useEffect(() => {
+    const path = guideRefs.current[strokeIdx];
+    if (!path) return;
+    const len = path.getTotalLength();
+    totalSamples.current = Math.max(30, Math.floor(len / 6));
+    covered.current = new Array(totalSamples.current).fill(false);
+    pts.current = []; setInked("");
+  }, [strokeIdx, letter]);
+
+  function cancelAnim() {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+    animRef.current = null; setPacer(null);
+  }
+  function toLocal(e) {
+    const r = svgRef.current.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: ((t.clientX - r.left) / r.width) * 300, y: ((t.clientY - r.top) / r.height) * 300 };
+  }
+  function nearest(p) {
+    const path = guideRefs.current[strokeIdx];
+    if (!path) return { d: 999, i: -1 };
+    const len = path.getTotalLength(); let best = 999, bi = -1;
+    const n = totalSamples.current;
+    for (let i = 0; i < n; i++) {
+      const gp = path.getPointAtLength((i / n) * len);
+      const d = Math.hypot(gp.x - p.x, gp.y - p.y);
+      if (d < best) { best = d; bi = i; }
+    }
+    return { d: best, i: bi };
+  }
+  function mark(p) { const nr = nearest(p); if (nr.d < TOL && nr.i >= 0) covered.current[nr.i] = true; }
+  function coverage() {
+    const a = covered.current; let c = 0;
+    for (let i = 0; i < a.length; i++) if (a[i]) c++;
+    return a.length ? c / a.length : 0;
+  }
+  function start(e) {
+    if (animRef.current) return;
+    e.preventDefault();
+    const p = toLocal(e), nr = nearest(p);
+    if (nr.i > totalSamples.current * 0.35) { setMsg("시작점(초록 점)부터 시작해요"); setMsgKind("warn"); return; }
+    drawing.current = true; pts.current = [p]; mark(p); setMsgKind("info");
+  }
+  function move(e) {
+    if (!drawing.current) return;
+    e.preventDefault();
+    const p = toLocal(e); pts.current.push(p); mark(p);
+    const ps = pts.current; let d = `M ${ps[0].x} ${ps[0].y}`;
+    for (let i = 1; i < ps.length; i++) d += ` L ${ps[i].x} ${ps[i].y}`;
+    setInked(d);
+  }
+  function end() {
+    if (!drawing.current) return;
+    drawing.current = false;
+    if (coverage() >= PASS) {
+      if (strokeIdx < strokes.length - 1) {
+        playClick(); setStrokeIdx(i => i + 1);
+        setMsg(`좋아요! 다음 획 ${strokeIdx + 2}번`); setMsgKind("ok");
+      } else {
+        // 글자 완성
+        onCorrect();
+        speakLetterName(letter);
+        setMsg(`완성! ${letter} 잘 썼어요 ⭐`); setMsgKind("done");
+        setTimeout(() => angela.show("correct"), 300);
+        setTimeout(() => {
+          if (idx < letters.length - 1) {
+            setIdx(i => i + 1);
+          } else {
+            setDone(true);
+            saveProgress(studentName, gameId, levelId, letters.length, letters.length);
+            setConfettiTrigger(t => t + 1);
+            setTimeout(() => angela.show("perfect"), 300);
+            onFinish(letters.length, letters.length);
+          }
+        }, 1100);
+      }
+    } else {
+      setMsg("점선을 끝까지 따라가 봐요"); setMsgKind("warn");
+      covered.current = new Array(totalSamples.current).fill(false);
+      pts.current = []; setInked("");
+    }
+  }
+  function playDemo() {
+    if (animRef.current || drawing.current) return;
+    const path = guideRefs.current[strokeIdx];
+    if (!path) return;
+    const len = path.getTotalLength(); const dur = 1100; let t0 = null;
+    setMsg("이 방향으로 그어요 👀"); setMsgKind("info");
+    const step = (ts) => {
+      if (!t0) t0 = ts;
+      const t = (ts - t0) / dur;
+      if (t >= 1) {
+        cancelAnim(); covered.current = new Array(totalSamples.current).fill(false);
+        setInked(""); setMsg("이제 직접 따라 그어보세요"); setMsgKind("idle"); return;
+      }
+      const cp = path.getPointAtLength(t * len);
+      setPacer({ x: cp.x, y: cp.y });
+      const s0 = path.getPointAtLength(0); let d = `M ${s0.x} ${s0.y}`;
+      for (let l = 0; l <= t * len; l += 5) { const q = path.getPointAtLength(l); d += ` L ${q.x} ${q.y}`; }
+      setInked(d);
+      animRef.current = requestAnimationFrame(step);
+    };
+    animRef.current = requestAnimationFrame(step);
+  }
+  function retry() {
+    cancelAnim(); setStrokeIdx(0); setInked("");
+    setMsg("초록 점에서 시작해 화살표 방향으로 그어요"); setMsgKind("idle");
+  }
+
+  if (done) {
+    return <FinishScreen score={letters.length} total={letters.length} levelId={levelId} onBack={onBack} onExit={onExit} />;
+  }
+  if (!letter || strokes.length === 0) {
+    return <EmptyPoolMessage onBack={onBack} message="따라쓸 글자를 불러올 수 없어요" />;
+  }
+
+  let startPt = null;
+  const cp = guideRefs.current[strokeIdx];
+  if (cp) { try { startPt = cp.getPointAtLength(0); } catch {} }
+
+  const inkColor = msgKind === "done" ? T.green : T.accent;
+  const msgColor = msgKind === "done" || msgKind === "ok" ? T.green
+    : msgKind === "warn" ? T.orange : msgKind === "info" ? T.accent : T.textMid;
+  const isUpper = letter === letter.toUpperCase();
+
+  return (
+    <div style={{ padding: 16, maxWidth: 720, margin: "0 auto" }}>
+      <FullScreenConfetti trigger={confettiTrigger} />
+      <angela.AngelaComponent />
+      <GameHeader
+        onBack={onBack}
+        title="✍️ 글자 따라쓰기"
+        progress={idx + 1}
+        total={letters.length}
+      />
+
+      <div style={{ textAlign: "center", marginBottom: 8 }}>
+        <span style={{ fontSize: 16, fontWeight: 900, color: T.text }}>
+          {letter} <span style={{ fontSize: 12, color: T.textMid }}>
+            ({isUpper ? "대문자" : "소문자"})
+          </span>
+        </span>
+      </div>
+
+      <div style={{
+        background: `linear-gradient(135deg, ${T.yellowLight}, ${T.pinkLight})`,
+        borderRadius: T.radiusXl, padding: 16,
+        display: "flex", flexDirection: "column", alignItems: "center"
+      }}>
+        <svg
+          ref={svgRef}
+          viewBox="0 0 300 300"
+          style={{ width: "100%", maxWidth: 300, touchAction: "none", cursor: "crosshair",
+                   background: "#fff", borderRadius: T.radius, border: `1px solid ${T.border}` }}
+          onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+          onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+        >
+          <defs>
+            <marker id="lw-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M 0 1 L 9 5 L 0 9 z" fill={T.accent} />
+            </marker>
+          </defs>
+
+          {[[g.cap, "2 5"], [g.mid, "2 5"], [g.base, null], [g.desc, "2 5"]].map(([y, dash], i) => (
+            <line key={i} x1="18" y1={y} x2="282" y2={y}
+              stroke="#cbd5e1" strokeWidth={dash ? 1 : 1.5}
+              strokeDasharray={dash || undefined} opacity={dash ? 0.6 : 0.85} />
+          ))}
+
+          {strokes.map((d, i) => (
+            <path key={`gh-${i}`} d={d} fill="none" stroke="#e8eaed"
+              strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" />
+          ))}
+
+          {strokes.map((d, i) => (
+            <path key={`gd-${i}`} ref={el => (guideRefs.current[i] = el)} d={d} fill="none"
+              stroke={i === strokeIdx ? "#94a3b8" : "transparent"}
+              strokeWidth="3" strokeDasharray="6 10" strokeLinecap="round"
+              markerEnd={i === strokeIdx ? "url(#lw-arrow)" : undefined} />
+          ))}
+
+          {strokes.length > 1 && strokes.map((d, i) => {
+            const path = guideRefs.current[i];
+            if (!path) return null;
+            let s; try { s = path.getPointAtLength(0); } catch { return null; }
+            const doneStroke = i < strokeIdx;
+            return (
+              <g key={`n-${i}`}>
+                <circle cx={s.x} cy={s.y} r="13" fill={doneStroke ? T.green : "#fff"}
+                  stroke="#94a3b8" strokeWidth="1.5" />
+                <text x={s.x} y={s.y} textAnchor="middle" dominantBaseline="central"
+                  fontSize="15" fontWeight="700" fill={doneStroke ? "#fff" : "#64748b"}>{i + 1}</text>
+              </g>
+            );
+          })}
+
+          <path d={inked} fill="none" stroke={inkColor} strokeWidth="14"
+            strokeLinecap="round" strokeLinejoin="round" />
+
+          {pacer && <circle cx={pacer.x} cy={pacer.y} r="9" fill={T.accent} stroke="#fff" strokeWidth="2" />}
+
+          {msgKind !== "done" && !pacer && startPt && pts.current.length === 0 && (
+            <circle cx={startPt.x} cy={startPt.y} r="12" fill={T.green} />
+          )}
+        </svg>
+
+        <div style={{ fontSize: 15, fontWeight: 800, color: msgColor, minHeight: 22, marginTop: 12, textAlign: "center" }}>
+          {msg}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <Btn v="primary" size="sm" onClick={playDemo}>▶ 시범</Btn>
+          <Btn v="ghost" size="sm" onClick={retry}>↺ 다시</Btn>
+          <Btn v="ghost" size="sm" onClick={() => speakLetterName(letter)}>🔊 소리</Btn>
+        </div>
       </div>
     </div>
   );
